@@ -1,14 +1,25 @@
 /* Copyright (c) 2007-2013 Timothy Wall, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * <p/>
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * The contents of this file is dual-licensed under 2 
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and 
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ * 
+ * You can freely decide which license you want to apply to 
+ * the project.
+ * 
+ * You may obtain a copy of the LGPL License at:
+ * 
+ * http://www.gnu.org/licenses/licenses.html
+ * 
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ * 
+ * You may obtain a copy of the Apache License at:
+ * 
+ * http://www.apache.org/licenses/
+ * 
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 #ifndef DISPATCH_H
 #define DISPATCH_H
@@ -18,7 +29,7 @@
 #include "ffi.h"
 #include "com_sun_jna_Function.h"
 #include "com_sun_jna_Native.h"
-#if defined(__sun__) || defined(_AIX)
+#if defined(__sun__) || defined(_AIX) || defined(__linux__)
 #  include <alloca.h>
 #endif
 #ifdef _WIN32
@@ -36,6 +47,9 @@
 #define GET_LAST_ERROR() GetLastError()
 #define SET_LAST_ERROR(CODE) SetLastError(CODE)
 #else
+#ifndef _XOPEN_SOURCE /* AIX power-aix 1 7 00F84C0C4C00 defins 700 */
+#define _XOPEN_SOURCE 600
+#endif
 #define GET_LAST_ERROR() errno
 #define SET_LAST_ERROR(CODE) (errno = (CODE))
 #endif /* _WIN32 */
@@ -49,6 +63,12 @@
   #define UNUSED(x) x
  #endif
 #endif /* !defined(UNUSED) */
+
+#ifdef NO_JAWT
+ #define UNUSED_JAWT(X) UNUSED(X)
+#else
+ #define UNUSED_JAWT(X) X
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -87,10 +107,16 @@ enum {
   CVT_CALLBACK = com_sun_jna_Native_CVT_CALLBACK,
   CVT_FLOAT = com_sun_jna_Native_CVT_FLOAT,
   CVT_NATIVE_MAPPED = com_sun_jna_Native_CVT_NATIVE_MAPPED,
+  CVT_NATIVE_MAPPED_STRING = com_sun_jna_Native_CVT_NATIVE_MAPPED_STRING,
+  CVT_NATIVE_MAPPED_WSTRING = com_sun_jna_Native_CVT_NATIVE_MAPPED_WSTRING,
   CVT_WSTRING = com_sun_jna_Native_CVT_WSTRING,
   CVT_INTEGER_TYPE = com_sun_jna_Native_CVT_INTEGER_TYPE,
   CVT_POINTER_TYPE = com_sun_jna_Native_CVT_POINTER_TYPE,
   CVT_TYPE_MAPPER = com_sun_jna_Native_CVT_TYPE_MAPPER,
+  CVT_TYPE_MAPPER_STRING = com_sun_jna_Native_CVT_TYPE_MAPPER_STRING,
+  CVT_TYPE_MAPPER_WSTRING = com_sun_jna_Native_CVT_TYPE_MAPPER_WSTRING,
+  CVT_OBJECT = com_sun_jna_Native_CVT_OBJECT,
+  CVT_JNIENV = com_sun_jna_Native_CVT_JNIENV,
 };
 
 /* callback behavior flags */
@@ -133,7 +159,7 @@ typedef struct _callback {
 
 #if defined(_MSC_VER)
 #include "snprintf.h"
-#define strdup _strdup
+#define STRDUP _strdup
 #if defined(_WIN64)
 #define L2A(X) ((void *)(X))
 #define A2L(X) ((jlong)(X))
@@ -141,6 +167,9 @@ typedef struct _callback {
 #define L2A(X) ((void *)(unsigned long)(X))
 #define A2L(X) ((jlong)(unsigned long)(X))
 #endif
+#else
+#include <stdio.h>
+#define STRDUP strdup
 #endif
 
 /* Convenience macros */
@@ -173,9 +202,9 @@ typedef struct _callback {
 #define ELastError "com/sun/jna/LastErrorException"
 
 extern void throwByName(JNIEnv *env, const char *name, const char *msg);
-extern int get_jtype(JNIEnv*, jclass);
+extern int get_java_type(JNIEnv*, jclass);
 extern ffi_type* get_ffi_type(JNIEnv*, jclass, char);
-extern ffi_type* get_ffi_rtype(JNIEnv*, jclass, char);
+extern ffi_type* get_ffi_return_type(JNIEnv*, jclass, char);
 extern const char* JNA_callback_init(JNIEnv*);
 extern void JNA_set_last_error(JNIEnv*,int);
 extern int JNA_get_last_error(JNIEnv*);
@@ -185,8 +214,8 @@ extern callback* create_callback(JNIEnv*, jobject, jobject,
                                  jobjectArray, jclass,
                                  callconv_t, jint, jstring);
 extern void free_callback(JNIEnv*, callback*);
-extern void extract_value(JNIEnv*, jobject, void*, size_t, jboolean);
-extern jobject new_object(JNIEnv*, char, void*, jboolean);
+extern void extract_value(JNIEnv*, jobject, void*, size_t, jboolean, const char*);
+extern jobject new_object(JNIEnv*, char, void*, jboolean, const char*);
 extern jboolean is_protected();
 extern int get_conversion_flag(JNIEnv*, jclass);
 extern jboolean ffi_error(JNIEnv*,const char*,ffi_status);
@@ -205,8 +234,8 @@ extern jlong getIntegerTypeValue(JNIEnv*, jobject);
 extern void* getPointerTypeAddress(JNIEnv*, jobject);
 extern void writeStructure(JNIEnv*, jobject);
 extern jclass getNativeType(JNIEnv*, jclass);
-extern void toNative(JNIEnv*, jobject, void*, size_t, jboolean);
-extern jclass fromNative(JNIEnv*, jclass, ffi_type*, void*, jboolean);
+extern void toNative(JNIEnv*, jobject, void*, size_t, jboolean, const char*);
+extern jclass fromNativeCallbackParam(JNIEnv*, jclass, ffi_type*, void*, jboolean, const char*);
 
 typedef struct _AttachOptions {
   int daemon;
@@ -223,6 +252,9 @@ extern jobject initializeThread(callback*,AttachOptions*);
 /* Native memory fault protection */
 #ifdef HAVE_PROTECTION
 #define PROTECT is_protected()
+#define UNUSED_ENV(X) X
+#else
+#define UNUSED_ENV(X) UNUSED(X)
 #endif
 #include "protect.h"
 #define ON_ERROR(ENV) throwByName(ENV, EError, "Invalid memory access")

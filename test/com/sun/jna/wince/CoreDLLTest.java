@@ -1,14 +1,25 @@
 /* Copyright (c) 2011 Timothy Wall, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * <p/>
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.wince;
 
@@ -16,7 +27,6 @@ import junit.framework.TestCase;
 import com.sun.jna.*;
 import com.sun.jna.ptr.*;
 import com.sun.jna.win32.*;
-import java.util.Arrays;
 import java.util.List;
 
 public class CoreDLLTest extends TestCase {
@@ -25,19 +35,27 @@ public class CoreDLLTest extends TestCase {
     }
 
     public interface CoreDLL extends StdCallLibrary {
+        CoreDLL INSTANCE = Native.load("coredll", CoreDLL.class, W32APIOptions.UNICODE_OPTIONS);
+
         public static class SECURITY_ATTRIBUTES extends Structure {
+            public static final List<String> FIELDS = createFieldsOrder("dwLength", "lpSecurityDescriptor", "bInheritHandle");
             public int dwLength;
             public Pointer lpSecurityDescriptor;
             public boolean bInheritHandle;
             public SECURITY_ATTRIBUTES() {
                 dwLength = size();
             }
-            protected List getFieldOrder() {
-                return Arrays.asList(new String[] { "dwLength", "lpSecurityDescriptor", "bInheritHandle" });
+            @Override
+            protected List<String> getFieldOrder() {
+                return FIELDS;
             }
         }
 
         public static class STARTUPINFO extends Structure {
+            public static final List<String> FIELDS = createFieldsOrder(
+                    "cb", "lpReserved", "lpDesktop", "lpTitle", "dwX", "dwY", "dwXSize", "dwYSize",
+                    "dwXCountChars", "dwYCountChars", "dwFillAttribute", "dwFlags", "wShowWindow",
+                    "cbReserved2", "lpReserved2", "hStdInput", "hStdOutput", "hStdError");
             public int cb;
             public String lpReserved;
             public String lpDesktop;
@@ -59,11 +77,13 @@ public class CoreDLLTest extends TestCase {
             public STARTUPINFO() {
                 cb = size();
             }
-            protected List getFieldOrder() {
-                return Arrays.asList(new String[] { "cb", "lpReserved", "lpDesktop", "lpTitle", "dwX", "dwY", "dwXSize", "dwYSize", "dwXCountChars", "dwYCountChars", "dwFillAttribute", "dwFlags", "wShowWindow", "cbReserved2", "lpReserved2", "hStdInput", "hStdOutput", "hStdError" });
+            @Override
+            protected List<String> getFieldOrder() {
+                return FIELDS;
             }
         }
         public static class PROCESS_INFORMATION extends Structure {
+            public static final List<String> FIELDS = createFieldsOrder("hProcess", "hThread", "dwProcessId", "dwThreadId");
             public Pointer hProcess;
             public Pointer hThread;
             public int dwProcessId;
@@ -72,24 +92,25 @@ public class CoreDLLTest extends TestCase {
             public static class ByReference extends PROCESS_INFORMATION implements Structure.ByReference {
                 public ByReference() {
                 }
-                
+
                 public ByReference(Pointer memory) {
                     super(memory);
                 }
             }
-            
+
             public PROCESS_INFORMATION() {
+                super();
             }
-            
+
             public PROCESS_INFORMATION(Pointer memory) {
                 super(memory);
             }
-            protected List getFieldOrder() {
-                return Arrays.asList(new String[] { "hProcess", "hThread", "dwProcessId", "dwThreadId" });
+            @Override
+            protected List<String> getFieldOrder() {
+                return FIELDS;
             }
         }
-        CoreDLL INSTANCE = (CoreDLL)Native.loadLibrary("coredll", CoreDLL.class,
-                                                       W32APIOptions.UNICODE_OPTIONS);
+
         boolean CreateProcess(String lpApplicationName, String lpCommandLine,
                               SECURITY_ATTRIBUTES lpProcessAttributes,
                               SECURITY_ATTRIBUTES lpThreadAttributes,
@@ -108,6 +129,3 @@ public class CoreDLLTest extends TestCase {
         assertTrue("Process launch failed", status);
     }
 }
-
-
-

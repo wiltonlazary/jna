@@ -1,20 +1,30 @@
 /* Copyright (c) 2007-2014 Timothy Wall, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * <p/>
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.win32;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 
 import junit.framework.TestCase;
@@ -33,20 +43,24 @@ public class W32StdCallTest extends TestCase {
 
     public static interface TestLibrary extends StdCallLibrary {
         public static class Inner extends Structure {
+            public static final List<String> FIELDS = createFieldsOrder("value");
             public double value;
-            protected List getFieldOrder() {
-                return Arrays.asList(new String[] { "value" }); 
+            @Override
+            protected List<String> getFieldOrder() {
+                return FIELDS;
             }
         }
         public static class TestStructure extends Structure {
             public static class ByValue extends TestStructure implements Structure.ByValue { }
+            public static final List<String> FIELDS = createFieldsOrder("c", "s", "i", "j", "inner");
             public byte c;
             public short s;
             public int i;
             public long j;
             public Inner inner;
-            protected List getFieldOrder() {
-                return Arrays.asList(new String[] { "c", "s", "i", "j", "inner" }); 
+            @Override
+            protected List<String> getFieldOrder() {
+                return FIELDS;
             }
         }
         int returnInt32ArgumentStdCall(int arg);
@@ -55,33 +69,33 @@ public class W32StdCallTest extends TestCase {
             int callback(int arg, int arg2);
         }
         int callInt32StdCallCallback(Int32Callback c, int arg, int arg2);
-        interface BugCallback extends StdCallCallback {
+        interface ManyArgsStdCallCallback extends StdCallCallback {
             void callback(NativeLong arg1, int arg2, double arg3,
                           String arg4, String arg5,
                           double arg6, NativeLong arg7,
                           double arg8, NativeLong arg9,
                           NativeLong arg10, NativeLong arg11);
         }
-        int callBugCallback(BugCallback c, NativeLong arg1, int arg2,
-                            double arg3, String arg4, String arg5,
-                            double arg6, NativeLong arg7,
-                            double arg8, NativeLong arg9,
-                            NativeLong arg10, NativeLong arg11);
+        int callManyArgsStdCallCallback(ManyArgsStdCallCallback c, NativeLong arg1, int arg2,
+                                        double arg3, String arg4, String arg5,
+                                        double arg6, NativeLong arg7,
+                                        double arg8, NativeLong arg9,
+                                        NativeLong arg10, NativeLong arg11);
     }
-    
+
     public static void main(java.lang.String[] argList) {
         junit.textui.TestRunner.run(W32StdCallTest.class);
     }
 
     private TestLibrary testlib;
-    
+
+    @Override
     protected void setUp() {
-        testlib = (TestLibrary)
-            Native.loadLibrary("testlib", TestLibrary.class, new HashMap() {
-                { put(Library.OPTION_FUNCTION_MAPPER, StdCallLibrary.FUNCTION_MAPPER); }
-            });
+        testlib = Native.load("testlib", TestLibrary.class,
+                Collections.singletonMap(Library.OPTION_FUNCTION_MAPPER, StdCallLibrary.FUNCTION_MAPPER));
     }
-    
+
+    @Override
     protected void tearDown() {
         testlib = null;
     }
@@ -91,44 +105,37 @@ public class W32StdCallTest extends TestCase {
         NativeLibrary lib = NativeLibrary.getInstance("testlib");
 
         Method[] methods = {
-            TestLibrary.class.getMethod("returnInt32ArgumentStdCall",
-                                        new Class[] { int.class }),
-            TestLibrary.class.getMethod("returnStructureByValueArgumentStdCall",
-                                        new Class[] {
-                                            TestLibrary.TestStructure.ByValue.class
-                                        }),
-            TestLibrary.class.getMethod("callInt32StdCallCallback",
-                                        new Class[] {
-                                            TestLibrary.Int32Callback.class,
-                                            int.class, int.class,
-                                        }),
+            TestLibrary.class.getMethod("returnInt32ArgumentStdCall", int.class),
+            TestLibrary.class.getMethod("returnStructureByValueArgumentStdCall", TestLibrary.TestStructure.ByValue.class),
+            TestLibrary.class.getMethod("callInt32StdCallCallback", TestLibrary.Int32Callback.class, int.class, int.class)
         };
 
-        for (int i=0;i < methods.length;i++) {
-            String name = mapper.getFunctionName(lib, methods[i]);
+        for (Method m : methods) {
+            String name = mapper.getFunctionName(lib, m);
             assertTrue("Function name not decorated for method "
-                       + methods[i].getName()
+                       + m.getName()
                        + ": " + name, name.indexOf("@") != -1);
             assertEquals("Wrong name in mapped function",
                          name, lib.getFunction(name, StdCallLibrary.STDCALL_CONVENTION).getName());
         }
     }
-    
+
     public void testStdCallReturnInt32Argument() {
         final int MAGIC = 0x12345678;
         assertEquals("Expect zero return", 0, testlib.returnInt32ArgumentStdCall(0));
         assertEquals("Expect magic return", MAGIC, testlib.returnInt32ArgumentStdCall(MAGIC));
     }
-    
+
     public void testStdCallReturnStructureByValueArgument() {
         TestLibrary.TestStructure.ByValue s = new TestLibrary.TestStructure.ByValue();
-        assertEquals("Wrong value", s, testlib.returnStructureByValueArgumentStdCall(s));
+        assertTrue("Wrong struct value", s.dataEquals(testlib.returnStructureByValueArgumentStdCall(s)));
     }
-    
+
     public void testStdCallCallback() {
         final int MAGIC = 0x11111111;
         final boolean[] called = { false };
         TestLibrary.Int32Callback cb = new TestLibrary.Int32Callback() {
+            @Override
             public int callback(int arg, int arg2) {
                 called[0] = true;
                 return arg + arg2;
@@ -140,9 +147,9 @@ public class W32StdCallTest extends TestCase {
         if (value == -1) {
             fail("stdcall callback did not restore the stack pointer");
         }
-        assertEquals("Wrong stdcall callback value", Integer.toHexString(EXPECTED), 
+        assertEquals("Wrong stdcall callback value", Integer.toHexString(EXPECTED),
                      Integer.toHexString(value));
-        
+
         value = testlib.callInt32StdCallCallback(cb, -1, -2);
         if (value == -1) {
             fail("stdcall callback did not restore the stack pointer");
@@ -150,9 +157,10 @@ public class W32StdCallTest extends TestCase {
         assertEquals("Wrong stdcall callback return", -3, value);
     }
 
-    public void testCallBugCallback() {
+    public void testStdCallCallbackStackAlignment() {
         final boolean[] called = { false };
-        TestLibrary.BugCallback cb = new TestLibrary.BugCallback() {
+        TestLibrary.ManyArgsStdCallCallback cb = new TestLibrary.ManyArgsStdCallCallback() {
+            @Override
             public void callback(NativeLong arg1, int arg2, double arg3,
                                  String arg4, String arg5,
                                  double arg6, NativeLong arg7,
@@ -161,12 +169,12 @@ public class W32StdCallTest extends TestCase {
                 called[0] = true;
             }
         };
-        int value = testlib.callBugCallback(cb, new NativeLong(1),
-                                            2, 3, "four", "five",
-                                            6, new NativeLong(7),
-                                            8, new NativeLong(9),
-                                            new NativeLong(10),
-                                            new NativeLong(11));
+        int value = testlib.callManyArgsStdCallCallback(cb, new NativeLong(1),
+                                                        2, 3, "four", "five",
+                                                        6, new NativeLong(7),
+                                                        8, new NativeLong(9),
+                                                        new NativeLong(10),
+                                                        new NativeLong(11));
         assertTrue("stdcall callback not called", called[0]);
         if (value == -1) {
             fail("stdcall callback did not restore the stack pointer");

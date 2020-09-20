@@ -1,51 +1,64 @@
 /* Copyright (c) 2007 Timothy Wall, All Rights Reserved
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ *
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna;
 
+import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 import junit.framework.TestCase;
 
 public class MemoryTest extends TestCase {
+
     public void testAutoFreeMemory() throws Exception {
         final boolean[] flag = { false };
         Memory core = new Memory(10) {
+            @Override
             protected void finalize() {
                 super.finalize();
                 flag[0] = true;
             }
         };
         Pointer shared = core.share(0, 5);
-        WeakReference ref = new WeakReference(core);
-        
+        Reference<Memory> ref = new WeakReference<Memory>(core);
+
         core = null;
         System.gc();
-        long start = System.currentTimeMillis();
         assertFalse("Memory prematurely GC'd", flag[0]);
         assertNotNull("Base memory GC'd while shared memory extant", ref.get());
         // Avoid having IBM J9 prematurely nullify "shared"
         shared.setInt(0, 0);
 
         shared = null;
+        long start = System.currentTimeMillis();
         System.gc();
-        while (ref.get() != null) {
-            if (System.currentTimeMillis() - start > 5000)
-                break;
-            Thread.sleep(10);
+        Memory.purge();
+        for (int i=0;i < GCWaits.GC_WAITS && ref.get() != null;i++) {
+            GCWaits.gcRun();
         }
-        assertNull("Memory not GC'd", ref.get());
+        long end = System.currentTimeMillis();
+        assertNull("Memory not GC'd after " + (end - start) + " millis", ref.get());
     }
 
     public void testShareMemory() {
@@ -120,8 +133,8 @@ public class MemoryTest extends TestCase {
         m.clear();
 
         ByteBuffer b = m.getByteBuffer(0, m.size());
-        WeakReference ref = new WeakReference(m);
-        WeakReference bref = new WeakReference(b);
+        Reference<Memory> ref = new WeakReference<Memory>(m);
+        Reference<ByteBuffer> bref = new WeakReference<ByteBuffer>(b);
 
         // Create a second byte buffer "equal" to the first
         m = new Memory(1024);
@@ -131,12 +144,10 @@ public class MemoryTest extends TestCase {
         m = null;
         System.gc();
         Memory.purge();
-        for (int i=0;i < 100 && ref.get() != null;i++) {
-            Thread.sleep(10);
-            System.gc();
-            Memory.purge();
+        for (int i=0;i < GCWaits.GC_WAITS && ref.get() != null;i++) {
+            GCWaits.gcRun();
         }
-        assertNotNull("Memory GC'd while NIO Buffer still extant", ref.get());
+        assertNotNull("Memory GC'd while NIO Buffer still exists", ref.get());
 
         // Avoid IBM J9 optimization resulting in premature GC of buffer
         b.put((byte)0);
@@ -144,13 +155,48 @@ public class MemoryTest extends TestCase {
         b = null;
         System.gc();
         Memory.purge();
-        for (int i=0;i < 100 && (bref.get() != null || ref.get() != null);i++) {
-            Thread.sleep(10);
-            System.gc();
-            Memory.purge();
+        for (int i=0;i < GCWaits.GC_WAITS && (bref.get() != null || ref.get() != null);i++) {
+            GCWaits.gcRun();
         }
         assertNull("Buffer not GC'd\n", bref.get());
         assertNull("Memory not GC'd after buffer GC'd\n", ref.get());
+    }
+
+    public void testDump() {
+        // test with 15 bytes so last line has less than 4 bytes
+        int n = 15;
+
+        Memory m = new Memory(n);
+
+        for (int i = 0; i < n; i++) {
+            m.setByte(i, (byte) i);
+        }
+
+        String ls = System.getProperty("line.separator");
+
+        assertEquals("memory dump" + ls +
+            "[00010203]" + ls +
+            "[04050607]" + ls +
+            "[08090a0b]" + ls +
+            "[0c0d0e]" + ls, m.dump());
+    }
+
+    public void testRemoveAllocatedMemory() {
+        // Make sure there are no remaining allocations
+        Memory.disposeAll();
+        assertEquals(0, Memory.integrityCheck());
+
+        // Test allocation and ensure it is accounted for
+        Memory mem = new Memory(1024);
+        assertEquals(1, Memory.integrityCheck());
+
+        // Test shared memory is not tracked
+        Pointer shared = mem.share(0, 32);
+        assertEquals(1, Memory.integrityCheck());
+
+        // Dispose memory and ensure allocation is removed from allocatedMemory-Map
+        mem.dispose();
+        assertEquals(0, Memory.integrityCheck());
     }
 
     public static void main(String[] args) {

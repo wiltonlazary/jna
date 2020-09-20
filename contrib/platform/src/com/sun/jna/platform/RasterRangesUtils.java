@@ -1,15 +1,26 @@
 /* Copyright (c) 2007 Olivier Chafik, All Rights Reserved
  * Copyright (c) 2008 Timothy Wall, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform;
 
@@ -30,7 +41,7 @@ import java.util.TreeSet;
 
 /**
  * Methods that are useful to decompose a raster into a set of rectangles.
- * An occupied pixel has two possible meanings, depending on the raster : 
+ * An occupied pixel has two possible meanings, depending on the raster :
  * <ul>
  * <li>if the raster has an alpha layer, occupied means with alpha not null</li>
  * <li>if the raster doesn't have any alpha layer, occupied means not completely black</li>
@@ -45,6 +56,7 @@ public class RasterRangesUtils {
     };
 
     private static final Comparator<Object> COMPARATOR = new Comparator<Object>() {
+        @Override
         public int compare(Object o1, Object o2) {
             return ((Rectangle)o1).x - ((Rectangle)o2).x;
         }
@@ -117,7 +129,7 @@ public class RasterRangesUtils {
      */
     public static boolean outputOccupiedRangesOfBinaryPixels(byte[] binaryBits, int w, int h, RangesOutput out) {
         Set<Rectangle> rects = new HashSet<Rectangle>();
-        Set<Rectangle> prevLine = Collections.EMPTY_SET;
+        Set<Rectangle> prevLine = Collections.<Rectangle>emptySet();
         int scanlineBytes = binaryBits.length / h;
         for (int row = 0; row < h; row++) {
             Set<Rectangle> curLine = new TreeSet<Rectangle>(COMPARATOR);
@@ -190,7 +202,7 @@ public class RasterRangesUtils {
      */
     public static boolean outputOccupiedRanges(int[] pixels, int w, int h, int occupationMask, RangesOutput out) {
         Set<Rectangle> rects = new HashSet<Rectangle>();
-        Set<Rectangle> prevLine = Collections.EMPTY_SET;
+        Set<Rectangle> prevLine = Collections.<Rectangle>emptySet();
         for (int row = 0; row < h; row++) {
             Set<Rectangle> curLine = new TreeSet<Rectangle>(COMPARATOR);
             int idxOffset = row * w;
@@ -231,8 +243,8 @@ public class RasterRangesUtils {
     private static Set<Rectangle> mergeRects(Set<Rectangle> prev, Set<Rectangle> current) {
         Set<Rectangle> unmerged = new HashSet<Rectangle>(prev);
         if (!prev.isEmpty() && !current.isEmpty()) {
-            Rectangle[] pr = prev.toArray(new Rectangle[prev.size()]);
-            Rectangle[] cr = current.toArray(new Rectangle[current.size()]);
+            Rectangle[] pr = prev.toArray(new Rectangle[0]);
+            Rectangle[] cr = current.toArray(new Rectangle[0]);
             int ipr = 0;
             int icr = 0;
             while (ipr < pr.length && icr < cr.length) {

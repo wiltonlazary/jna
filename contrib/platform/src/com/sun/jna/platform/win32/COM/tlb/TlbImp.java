@@ -1,14 +1,25 @@
 /* Copyright (c) 2013 Tobias Wolf, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32.COM.tlb;
 
@@ -31,7 +42,7 @@ import com.sun.jna.platform.win32.COM.tlb.imp.TlbInterface;
 // TODO: Auto-generated Javadoc
 /**
  * The Class TlbImp.
- * 
+ *
  * @author Tobias Wolf, wolf.tobias@gmx.net
  */
 public class TlbImp implements TlbConst {
@@ -48,7 +59,7 @@ public class TlbImp implements TlbConst {
 
     /**
      * The main method.
-     * 
+     *
      * @param args
      *            the arguments
      */
@@ -98,9 +109,9 @@ public class TlbImp implements TlbConst {
                 if (typekind.value == TYPEKIND.TKIND_ENUM) {
                     this.createCOMEnum(i, this.getPackageName(), typeLibUtil);
                 } else if (typekind.value == TYPEKIND.TKIND_RECORD) {
-                    this.logInfo("'TKIND_RECORD' objects are currently not supported!");
+                    TlbImp.logInfo("'TKIND_RECORD' objects are currently not supported!");
                 } else if (typekind.value == TYPEKIND.TKIND_MODULE) {
-                    this.logInfo("'TKIND_MODULE' objects are currently not supported!");
+                    TlbImp.logInfo("'TKIND_MODULE' objects are currently not supported!");
                 } else if (typekind.value == TYPEKIND.TKIND_INTERFACE) {
                     this.createCOMInterface(i, this.getPackageName(),
                             typeLibUtil);
@@ -111,9 +122,9 @@ public class TlbImp implements TlbConst {
                     this.createCOMCoClass(i, this.getPackageName(),
                             typeLibUtil, bindingMode);
                 } else if (typekind.value == TYPEKIND.TKIND_ALIAS) {
-                    this.logInfo("'TKIND_ALIAS' objects are currently not supported!");
+                    TlbImp.logInfo("'TKIND_ALIAS' objects are currently not supported!");
                 } else if (typekind.value == TYPEKIND.TKIND_UNION) {
-                    this.logInfo("'TKIND_UNION' objects are currently not supported!");
+                    TlbImp.logInfo("'TKIND_UNION' objects are currently not supported!");
                 }
             }
 
@@ -167,7 +178,7 @@ public class TlbImp implements TlbConst {
 
     /**
      * Creates the com enum.
-     * 
+     *
      * @param index
      *            the index
      * @param typeLibUtil
@@ -182,7 +193,7 @@ public class TlbImp implements TlbConst {
 
     /**
      * Creates the com interface.
-     * 
+     *
      * @param index
      *            the index
      * @param typeLibUtil
@@ -198,7 +209,7 @@ public class TlbImp implements TlbConst {
 
     /**
      * Creates the com dispatch.
-     * 
+     *
      * @param index
      *            the index
      * @param typeLibUtil
@@ -221,7 +232,7 @@ public class TlbImp implements TlbConst {
 
     /**
      * Log info.
-     * 
+     *
      * @param msg
      *            the msg
      */

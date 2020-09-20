@@ -1,26 +1,35 @@
 /* Copyright (c) 2007-2013 Timothy Wall, All Rights Reserved
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ *
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.mac;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import com.sun.jna.Library;
 import com.sun.jna.Native;
-import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.ptr.PointerByReference;
 import com.sun.jna.ptr.ByteByReference;
@@ -28,11 +37,12 @@ import com.sun.jna.platform.FileUtils;
 
 public class MacFileUtils extends FileUtils {
 
+    @Override
     public boolean hasTrash() { return true; }
 
     public interface FileManager extends Library {
 
-        public FileManager INSTANCE = (FileManager)Native.loadLibrary("CoreServices", FileManager.class);
+        FileManager INSTANCE = Native.load("CoreServices", FileManager.class);
 
         int kFSFileOperationDefaultOptions = 0;
         int kFSFileOperationsOverwrite = 0x01;
@@ -43,13 +53,13 @@ public class MacFileUtils extends FileUtils {
         int kFSPathDefaultOptions = 0x0;
         int kFSPathMakeRefDoNotFollowLeafSymlink = 0x01;
 
+        @Structure.FieldOrder({"hidden"})
         class FSRef extends Structure {
             public byte[] hidden = new byte[80];
-            protected List getFieldOrder() { return Arrays.asList(new String[] { "hidden" }); }
         }
 
         // Deprecated; use trashItemAtURL instead:
-        // https://developer.apple.com/library/mac/#documentation/Cocoa/Reference/Foundation/Classes/NSFileManager_Class/Reference/Reference.html#//apple_ref/occ/instm/NSFileManager/trashItemAtURL:resultingItemURL:error: 
+        // https://developer.apple.com/library/mac/#documentation/Cocoa/Reference/Foundation/Classes/NSFileManager_Class/Reference/Reference.html#//apple_ref/occ/instm/NSFileManager/trashItemAtURL:resultingItemURL:error:
         int FSRefMakePath(FSRef fsref, byte[] path, int maxPathSize);
         int FSPathMakeRef(String source, int options, ByteByReference isDirectory);
         int FSPathMakeRefWithOptions(String source, int options, FSRef fsref, ByteByReference isDirectory);
@@ -57,17 +67,12 @@ public class MacFileUtils extends FileUtils {
         int FSMoveObjectToTrashSync(FSRef source, FSRef target, int options);
     }
 
-    public void moveToTrash(File[] files) throws IOException {
-        File home = new File(System.getProperty("user.home"));
-        File trash = new File(home, ".Trash");
-        if (!trash.exists()) {
-            throw new IOException("The Trash was not found in its expected location (" + trash + ")");
-        }
+    @Override
+    public void moveToTrash(File... files) throws IOException {
         List<String> failed = new ArrayList<String>();
-        for (int i=0;i < files.length;i++) {
-            File src = files[i];
+        for (File src: files) {
             FileManager.FSRef fsref = new FileManager.FSRef();
-            int status = FileManager.INSTANCE.FSPathMakeRefWithOptions(src.getAbsolutePath(), 
+            int status = FileManager.INSTANCE.FSPathMakeRefWithOptions(src.getAbsolutePath(),
                                                                        FileManager.kFSPathMakeRefDoNotFollowLeafSymlink,
                                                                        fsref, null);
             if (status != 0) {

@@ -1,18 +1,28 @@
 /* Copyright (c) 2007 Timothy Wall, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna;
 
-import java.util.Arrays;
 import java.util.List;
 
 import junit.framework.TestCase;
@@ -21,24 +31,30 @@ import junit.framework.TestCase;
 public class UnionTest extends TestCase {
 
     public static class TestStructure extends Structure {
+        public static final List<String> FIELDS = createFieldsOrder("value");
         public String value;
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "value" });
+        @Override
+        protected List<String> getFieldOrder() {
+            return FIELDS;
         }
     }
 
     public static class BigTestStructure extends Structure {
+        public static final List<String> FIELDS = createFieldsOrder("field1", "field2");
         public long field1;
         public long field2;
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "field1", "field2" });
+        @Override
+        protected List<String> getFieldOrder() {
+            return FIELDS;
         }
     }
 
     public static class IntStructure extends Structure {
+        public static final List<String> FIELDS = createFieldsOrder("value");
         public int value;
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "value" });
+        @Override
+        protected List<String> getFieldOrder() {
+            return FIELDS;
         }
     }
 
@@ -76,7 +92,7 @@ public class UnionTest extends TestCase {
 
     public void testFieldOffsets() {
         StructUnion u = new StructUnion();
-        assertEquals("Wrong union size: " + u, Pointer.SIZE, u.size());
+        assertEquals("Wrong union size: " + u, Native.POINTER_SIZE, u.size());
         u.setType(u.testStruct.getClass());
         u.write();
         assertEquals("Wrong struct member base address",
@@ -116,7 +132,7 @@ public class UnionTest extends TestCase {
         final int VALUE = 0x12345678;
         // write an instance of a direct union class to memory
         StructUnion u = new StructUnion();
-        assertEquals("Wrong union size: " + u, Pointer.SIZE, u.size());
+        assertEquals("Wrong union size: " + u, Native.POINTER_SIZE, u.size());
         IntStructure intStruct = new IntStructure();
         intStruct.value = VALUE;
         u.setTypedValue(intStruct);
@@ -132,6 +148,7 @@ public class UnionTest extends TestCase {
         // write an instance of an interface
         u = new StructUnion();
         Func1 func1 = new Func1() {
+            @Override
             public void callback() {
                 System.out.println("hi");
             }
@@ -141,7 +158,7 @@ public class UnionTest extends TestCase {
 
     public void testReadTypedUnion() {
         StructUnion u = new StructUnion();
-        assertEquals("Wrong union size: " + u, Pointer.SIZE, u.size());
+        assertEquals("Wrong union size: " + u, Native.POINTER_SIZE, u.size());
         final int VALUE = 0x12345678;
         u.getPointer().setInt(0, VALUE);
         assertEquals("int structure not read properly", VALUE, ((IntStructure) u.getTypedValue(IntStructure.class)).value);
@@ -154,12 +171,12 @@ public class UnionTest extends TestCase {
         assertNotNull("Type information is missing for union instance", u.getTypeInfo());
         if (Native.POINTER_SIZE == 4) {
             assertEquals("Type size should be that of largest field if no field is active",
-                         Structure.getTypeInfo(BigTestStructure.class).getInt(0),
+                         Structure.getTypeInfo(BigTestStructure.class).getPointer().getInt(0),
                          u.getTypeInfo().getInt(0));
         }
         else {
             assertEquals("Type size should be that of largest field if no field is active",
-                         Structure.getTypeInfo(BigTestStructure.class).getLong(0),
+                         Structure.getTypeInfo(BigTestStructure.class).getPointer().getLong(0),
                          u.getTypeInfo().getLong(0));
         }
         u.setType(int.class);
@@ -167,12 +184,12 @@ public class UnionTest extends TestCase {
         assertNotNull("Type information is missing for union instance after type set", u.getTypeInfo());
         if (Native.POINTER_SIZE == 4) {
             assertEquals("Type size should be that of largest field if any field is active",
-                         Structure.getTypeInfo(BigTestStructure.class).getInt(0),
+                         Structure.getTypeInfo(BigTestStructure.class).getPointer().getInt(0),
                          u.getTypeInfo().getInt(0));
         }
         else {
             assertEquals("Type size should be that of largest field if any field is active",
-                         Structure.getTypeInfo(BigTestStructure.class).getLong(0),
+                         Structure.getTypeInfo(BigTestStructure.class).getPointer().getLong(0),
                          u.getTypeInfo().getLong(0));
         }
     }

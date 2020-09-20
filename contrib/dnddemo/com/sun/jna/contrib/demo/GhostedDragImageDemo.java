@@ -1,14 +1,25 @@
 /* Copyright (c) 2007 Timothy Wall, All Rights Reserved
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ *
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.contrib.demo;
 
@@ -38,7 +49,7 @@ import com.sun.jna.platform.dnd.DropHandler;
 
 /** Demonstrate ghosted drag images.  Unfortunately, Swing drag support hides
  * the hooks we need to move the drag image around, so we don't use it and
- * roll our own.  
+ * roll our own.
  */
 public class GhostedDragImageDemo {
 
@@ -63,14 +74,14 @@ public class GhostedDragImageDemo {
     }
 
     public static class DragLabel extends JLabel {
-		private static final long serialVersionUID = 1L;
-		private boolean dragging;
+        private static final long serialVersionUID = 1L;
+        private boolean dragging;
         public DragLabel(Icon icon) {
             super(icon);
             new DragHandler(this, DnDConstants.ACTION_COPY_OR_MOVE) {
                 protected Icon getDragIcon(DragGestureEvent e, Point imageOffset) {
                     dragging = true;
-                    return getIcon(); 
+                    return getIcon();
                 }
                 public void dragDropEnd(DragSourceDropEvent e) {
                     super.dragDropEnd(e);
@@ -108,7 +119,7 @@ public class GhostedDragImageDemo {
             }
         }
     }
-    
+
     public static void main(String[] args) {
         try {
             System.setProperty("sun.java2d.noddraw", "true");

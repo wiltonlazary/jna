@@ -1,35 +1,47 @@
-package com.sun.jna;
 /* Copyright (c) 2011 Timothy Wall, All Rights Reserved
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ *
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
-/**  This class provides for customization of the mapping of native threads
+/**<p>This class provides for customization of the mapping of native threads
  * onto attached Java threads.  Use
  * {@link Native#setCallbackThreadInitializer} to customize the thread context
- * in which a given callback is invoked.<p/>
- *   When a JNA callback is invoked on a native thread that is not currently
+ * in which a given callback is invoked.</p>
+ * <p>When a JNA callback is invoked on a native thread that is not currently
  * tracked by the VM and a <code>CallbackThreadInitiailizer</code> is
  * registered for that callback, the initializer object will be used to
- * determine how the thread should be attached to the VM.<p/>
- *   Once attached, the method {@link Native#detach} may be used from within
+ * determine how the thread should be attached to the VM.</p>
+ * <p>Once attached, the method {@link Native#detach} may be used from within
  * the callback invocation to alter whether the thread will be detached or not
  * when the callback finishes execution.  Typically this functionality is used
  * in situations where you expect a callback to be called repeatedly from the
  * same thread and you want to avoid potential extra thread allocation
  * overhead on each callback invocation, since the VM may or may not re-use
- * the same allocated thread object each time the thread is attached.<p/>
- *   A single initializer may be used for multiple callbacks, one initializer
+ * the same allocated thread object each time the thread is attached.</p>
+ * <p>A single initializer may be used for multiple callbacks, one initializer
  * per callback, or you may subclass the initializer to provide different
- * initializer settings depending on the callback.<p/>
+ * initializer settings depending on the callback.</p>
  */
+package com.sun.jna;
+
 public class CallbackThreadInitializer {
     private boolean daemon;
     private boolean detach;
@@ -41,7 +53,7 @@ public class CallbackThreadInitializer {
     public CallbackThreadInitializer() {
         this(true);
     }
-    /** Keep the callback thread attached, with the given daemon state, 
+    /** Keep the callback thread attached, with the given daemon state,
         using the default thread name and group.
     */
     public CallbackThreadInitializer(boolean daemon) {

@@ -1,21 +1,32 @@
 /* Copyright (c) 2012 Tobias Wolf, All Rights Reserved
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ *
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32.COM;
 
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.WString;
-import com.sun.jna.platform.win32.Guid.IID;
+import com.sun.jna.platform.win32.Guid.REFIID;
 import com.sun.jna.platform.win32.OaIdl.DISPID;
 import com.sun.jna.platform.win32.OaIdl.DISPIDByReference;
 import com.sun.jna.platform.win32.OaIdl.EXCEPINFO;
@@ -24,6 +35,7 @@ import com.sun.jna.platform.win32.Variant.VARIANT;
 import com.sun.jna.platform.win32.WinDef.LCID;
 import com.sun.jna.platform.win32.WinDef.UINT;
 import com.sun.jna.platform.win32.WinDef.UINTByReference;
+import com.sun.jna.platform.win32.WinDef.WORD;
 import com.sun.jna.platform.win32.WinNT.HRESULT;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
@@ -31,10 +43,10 @@ import com.sun.jna.ptr.PointerByReference;
 // TODO: Auto-generated Javadoc
 /**
  * Wrapper class for the IDispatch interface
- * 
+ *
  * IDispatch.GetTypeInfoCount 12 IDispatch.GetTypeInfo 16
  * IDispatch.GetIDsOfNames 20 IDispatch.Invoke 24
- * 
+ *
  * @author Tobias Wolf, wolf.tobias@gmx.net
  */
 public class Dispatch extends Unknown implements IDispatch {
@@ -52,11 +64,11 @@ public class Dispatch extends Unknown implements IDispatch {
 
     /**
      * Gets the type info count.
-     * 
+     *
      * @param pctinfo
      *            the pctinfo
      * @return the hresult
-     * 
+     *
      *         Virtual
      */
     public HRESULT GetTypeInfoCount(UINTByReference pctinfo) {
@@ -66,7 +78,7 @@ public class Dispatch extends Unknown implements IDispatch {
 
     /**
      * Gets the type info.
-     * 
+     *
      * @param iTInfo
      *            the i t info
      * @param lcid
@@ -84,7 +96,7 @@ public class Dispatch extends Unknown implements IDispatch {
 
     /**
      * Gets the ids of names.
-     * 
+     *
      * @param riid
      *            the riid
      * @param rgszNames
@@ -97,16 +109,16 @@ public class Dispatch extends Unknown implements IDispatch {
      *            the rg disp id
      * @return the hresult
      */
-    public HRESULT GetIDsOfNames(IID riid, WString[] rgszNames, int cNames,
-            LCID lcid, DISPIDByReference rgDispId) {
+    public HRESULT GetIDsOfNames(REFIID riid, WString[] rgszNames, int cNames,
+        LCID lcid, DISPIDByReference rgDispId) {
         return (HRESULT) this._invokeNativeObject(5,
-                new Object[] { this.getPointer(), riid, rgszNames, cNames,
-                        lcid, rgDispId }, HRESULT.class);
+            new Object[]{this.getPointer(), riid, rgszNames, cNames,
+                lcid, rgDispId}, HRESULT.class);
     }
 
     /**
      * Invoke.
-     * 
+     *
      * @param dispIdMember
      *            the disp id member
      * @param riid
@@ -125,13 +137,13 @@ public class Dispatch extends Unknown implements IDispatch {
      *            the pu arg err
      * @return the hresult
      */
-    public HRESULT Invoke(DISPID dispIdMember, IID riid, LCID lcid,
-            DISPID wFlags, DISPPARAMS pDispParams,
-            VARIANT.ByReference pVarResult, EXCEPINFO.ByReference pExcepInfo,
-            IntByReference puArgErr) {
+    public HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid,
+        WORD wFlags, DISPPARAMS.ByReference pDispParams,
+        VARIANT.ByReference pVarResult, EXCEPINFO.ByReference pExcepInfo,
+        IntByReference puArgErr) {
         return (HRESULT) this
-                ._invokeNativeObject(6, new Object[] { this.getPointer(),
-                        dispIdMember, riid, lcid, wFlags, pDispParams,
-                        pVarResult, pExcepInfo, puArgErr }, HRESULT.class);
+            ._invokeNativeObject(6, new Object[]{this.getPointer(),
+                dispIdMember, riid, lcid, wFlags, pDispParams,
+                pVarResult, pExcepInfo, puArgErr}, HRESULT.class);
     }
 }

@@ -1,14 +1,25 @@
 /* Copyright (c) 2007 Timothy Wall, All Rights Reserved
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ *
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform;
 
@@ -24,7 +35,7 @@ import com.sun.jna.platform.win32.WinUser;
 
 /** Provide access to the local keyboard state.  Note that this is meaningless
  * on a headless system and some VNC setups.
- * 
+ *
  * @author twall
  */
 // TODO: key clicks
@@ -32,7 +43,7 @@ import com.sun.jna.platform.win32.WinUser;
 // TODO: keyboard bell
 // TODO: led state
 public class KeyboardUtils {
-    static final NativeKeyboardUtils INSTANCE; 
+    static final NativeKeyboardUtils INSTANCE;
     static {
         if (GraphicsEnvironment.isHeadless()) {
             throw new HeadlessException("KeyboardUtils requires a keyboard");
@@ -42,28 +53,28 @@ public class KeyboardUtils {
         }
         else if (Platform.isMac()) {
             INSTANCE = new MacKeyboardUtils();
-            throw new UnsupportedOperationException("No support (yet) for " 
+            throw new UnsupportedOperationException("No support (yet) for "
                                                     + System.getProperty("os.name"));
         }
         else {
             INSTANCE = new X11KeyboardUtils();
         }
     }
-    
+
     public static boolean isPressed(int keycode, int location) {
         return INSTANCE.isPressed(keycode, location);
     }
     public static boolean isPressed(int keycode) {
         return INSTANCE.isPressed(keycode);
     }
-    
+
     private static abstract class NativeKeyboardUtils {
         public abstract boolean isPressed(int keycode, int location);
         public boolean isPressed(int keycode) {
             return isPressed(keycode, KeyEvent.KEY_LOCATION_UNKNOWN);
         }
     }
-    
+
     private static class W32KeyboardUtils extends NativeKeyboardUtils {
         private int toNative(int code, int loc) {
             if ((code >= KeyEvent.VK_A && code <= KeyEvent.VK_Z)
@@ -72,28 +83,28 @@ public class KeyboardUtils {
             }
             if (code == KeyEvent.VK_SHIFT) {
                 if ((loc & KeyEvent.KEY_LOCATION_RIGHT) != 0) {
-                    return WinUser.VK_RSHIFT; 
+                    return WinUser.VK_RSHIFT;
                 }
                 if ((loc & KeyEvent.KEY_LOCATION_LEFT) != 0) {
-                    return WinUser.VK_LSHIFT; 
+                    return WinUser.VK_LSHIFT;
                 }
                 return WinUser.VK_SHIFT;
             }
             if (code == KeyEvent.VK_CONTROL) {
                 if ((loc & KeyEvent.KEY_LOCATION_RIGHT) != 0) {
-                    return WinUser.VK_RCONTROL; 
+                    return WinUser.VK_RCONTROL;
                 }
                 if ((loc & KeyEvent.KEY_LOCATION_LEFT) != 0) {
-                    return WinUser.VK_LCONTROL; 
+                    return WinUser.VK_LCONTROL;
                 }
                 return WinUser.VK_CONTROL;
             }
             if (code == KeyEvent.VK_ALT) {
                 if ((loc & KeyEvent.KEY_LOCATION_RIGHT) != 0) {
-                    return WinUser.VK_RMENU; 
+                    return WinUser.VK_RMENU;
                 }
                 if ((loc & KeyEvent.KEY_LOCATION_LEFT) != 0) {
-                    return WinUser.VK_LMENU; 
+                    return WinUser.VK_LMENU;
                 }
                 return WinUser.VK_MENU;
             }

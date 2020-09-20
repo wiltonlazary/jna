@@ -1,22 +1,35 @@
 /* Copyright (c) 2008 Stefan Endrullis, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * <p/>
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package jnacontrib.x11.demos;
 
 import jnacontrib.x11.api.X;
+import jnacontrib.x11.api.X.X11Exception;
 
 import javax.swing.*;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.TableModel;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -28,7 +41,7 @@ import java.util.ArrayList;
  * @author Stefan Endrullis
  */
 public class XDesktopDemo extends JFrame {
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
     public static void main(String[] args) throws X.X11Exception {
         new XDesktopDemo();
     }
@@ -43,7 +56,8 @@ public class XDesktopDemo extends JFrame {
     private JButton closeWindowButton;
     private JButton goToWindowButton;
     private JButton showDesktop;
-    
+    private JButton showSubwindows;
+
     public XDesktopDemo() throws X.X11Exception {
         super("XDesktopDemo");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -143,6 +157,55 @@ public class XDesktopDemo extends JFrame {
                 }
             }
         });
+        showSubwindows.addActionListener(new ActionListener() {
+
+            private void addWindowsToArea( JTextArea area, int depth, X.Window win ) throws X11Exception{
+                X.Window[] subWindows = win.getSubwindows();
+                String title = win.getTitle();
+                if( title != null ){
+                    area.append( String.format( "%" + depth + "s0x%08X - %s", " ", win.getID(), title ) );
+                }else{
+                    area.append( String.format( "%" + depth + "s0x%08X", " ", win.getID() ) );
+                }
+                area.append( System.getProperty( "line.separator" ) );
+
+                if( subWindows == null ){
+                    return;
+                }
+                for( int x = 0; x < subWindows.length; x++ ){
+                    addWindowsToArea( area, depth + 4, subWindows[ x ] );
+                }
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                X.Window window = getSelectedWindow();
+
+                try{
+                    final JDialog jd = new JDialog();
+                    JPanel dialogPanel = new JPanel( new BorderLayout() );
+                    jd.setSize( 320, 240 );
+                    jd.setTitle( "Subwindows" );
+                    jd.setDefaultCloseOperation( JDialog.DISPOSE_ON_CLOSE );
+                    JTextArea area = new JTextArea();
+                    addWindowsToArea( area, 1, window );
+                    dialogPanel.add( area, BorderLayout.CENTER );
+                    JButton closeButton = new JButton( "Close" );
+                    closeButton.addActionListener( new ActionListener() {
+
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            jd.dispose();
+                        }
+                    });
+                    dialogPanel.add( closeButton, BorderLayout.SOUTH );
+                    jd.add( dialogPanel );
+                    jd.setVisible( true );
+                } catch (X.X11Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 
     private X.Window getSelectedWindow() {
@@ -169,15 +232,14 @@ public class XDesktopDemo extends JFrame {
         int activeWindowNumber = -1;
         X.Window[] windows = display.getWindows();
         String[] head = new String[]{
-            "ID", "Desktop", "Title",
-            "X", "Y", "Width", "Height"
+            "ID", "Desktop", "Title", "X", "Y", "Width", "Height"
         };
         String[][] data = new String[windows.length][head.length];
         for (int i = 0; i < windows.length; i++) {
             X.Window window = windows[i];
             X.Window.Geometry geo = window.getGeometry();
             int windowId = window.getID();
-            data[i][0] = String.format("0x%08X", new Object[]{new Integer(windowId)});
+            data[i][0] = String.format("0x%08X", new Object[]{Integer.valueOf(windowId)});
             data[i][1] = "" + window.getDesktop();
             data[i][2] = window.getTitle();
             data[i][3] = "" + geo.x;
@@ -298,10 +360,13 @@ public class XDesktopDemo extends JFrame {
         gbc.gridy = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         panel3.add(showDesktop, gbc);
-
-        // more attributes
-        desktopList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        windowTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        showSubwindows = new JButton();
+        showSubwindows.setText("show subwindows");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 1;
+        gbc.gridy = 3;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        panel3.add(showSubwindows, gbc);
 
         setContentPane(mainPanel);
     }
@@ -310,7 +375,7 @@ public class XDesktopDemo extends JFrame {
      * A simple ListModel managing a list of objects.
      */
     public static class SimpleListModel extends AbstractListModel {
-		private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 1L;
         private ArrayList<Object> list;
 
         public SimpleListModel(ArrayList<Object> list) {

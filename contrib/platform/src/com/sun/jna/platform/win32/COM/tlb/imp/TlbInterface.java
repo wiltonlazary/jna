@@ -1,14 +1,25 @@
 /* Copyright (c) 2013 Tobias Wolf, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32.COM.tlb.imp;
 
@@ -24,14 +35,14 @@ import com.sun.jna.platform.win32.COM.TypeLibUtil.TypeLibDoc;
 // TODO: Auto-generated Javadoc
 /**
  * The Class TlbInterface.
- * 
+ *
  * @author Tobias Wolf, wolf.tobias@gmx.net
  */
 public class TlbInterface extends TlbBase {
 
     /**
      * Instantiates a new tlb interface.
-     * 
+     *
      * @param index
      *            the index
      * @param typeLibUtil
@@ -83,7 +94,7 @@ public class TlbInterface extends TlbBase {
 
     /**
      * Creates the java doc header.
-     * 
+     *
      * @param guid
      *            the guid
      * @param helpstring
@@ -96,7 +107,7 @@ public class TlbInterface extends TlbBase {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see com.sun.jna.platform.win32.COM.tlb.imp.TlbBase#getClassTemplate()
      */
     @Override

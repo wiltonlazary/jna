@@ -1,14 +1,25 @@
 /* Copyright (c) 2013 Timothy Wall, All Rights Reserved
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ *
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna;
 
@@ -16,7 +27,7 @@ import junit.framework.TestCase;
 
 //@SuppressWarnings("unused")
 public class PlatformTest extends TestCase {
-    
+
     public void testOSPrefix() {
         assertEquals("Wrong resource path", "win32-x86",
                      Platform.getNativeLibraryResourcePrefix(Platform.WINDOWS,
@@ -57,6 +68,18 @@ public class PlatformTest extends TestCase {
         assertEquals("Wrong resource path Linux/ppc", "linux-ppc",
                      Platform.getNativeLibraryResourcePrefix(Platform.LINUX,
                                                              "powerpc", "Linux"));
+        assertEquals("Wrong resource path Linux/sparcv9", "linux-sparcv9",
+                     Platform.getNativeLibraryResourcePrefix(Platform.LINUX,
+                                                             "sparcv9", "Linux"));
+        if (Platform.isSoftFloat()) {
+            assertEquals("Wrong resource path Linux/arm (softfloat)", "linux-armel",
+                    Platform.getNativeLibraryResourcePrefix(Platform.LINUX,
+                            "arm", "Linux/Gnu"));
+        } else {
+            assertEquals("Wrong resource path Linux/arm (hardfloat)", "linux-arm",
+                    Platform.getNativeLibraryResourcePrefix(Platform.LINUX,
+                            "arm", "Linux/Gnu"));
+        }
         assertEquals("Wrong resource path OpenBSD/x86", "openbsd-x86",
                      Platform.getNativeLibraryResourcePrefix(Platform.OPENBSD,
                                                              "x86", "OpenBSD"));
@@ -72,13 +95,21 @@ public class PlatformTest extends TestCase {
         assertEquals("Wrong resource path Linux/armv7l (android)", "android-arm",
                      Platform.getNativeLibraryResourcePrefix(Platform.ANDROID,
                                                              "armv7l", "Linux"));
-        
         assertEquals("Wrong resource path other/other", "name-ppc",
                      Platform.getNativeLibraryResourcePrefix(Platform.UNSPECIFIED,
                                                              "PowerPC", "Name Of System"));
-        
+
     }
 
+    public void testSystemProperty() {
+        String demoOverride = "demoOverride";
+        assertFalse(demoOverride.equals(Platform.getNativeLibraryResourcePrefix()));
+
+        System.setProperty("jna.prefix", demoOverride);
+        assertTrue(demoOverride.equals(Platform.getNativeLibraryResourcePrefix()));
+
+        System.clearProperty("jna.prefix");
+    }
 
     public static void main(String[] args) {
         junit.textui.TestRunner.run(PlatformTest.class);

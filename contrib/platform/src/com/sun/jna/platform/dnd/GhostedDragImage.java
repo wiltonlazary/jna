@@ -1,14 +1,25 @@
 /* Copyright (c) 2007 Timothy Wall, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * <p/>
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.dnd;
 
@@ -31,11 +42,11 @@ import javax.swing.Timer;
 
 import com.sun.jna.platform.WindowUtils;
 
-/** Provide a ghosted drag image for use during drags where 
+/** Provide a ghosted drag image for use during drags where
  * {@link DragSource#isDragImageSupported} returns false.<p>
- * Its location in screen coordinates may be changed via {@link #move}.<p>  
+ * Its location in screen coordinates may be changed via {@link #move}.<p>
  * When the image is no longer needed, invoke {@link #dispose}, which
- * hides the graphic immediately, or {@link #returnToOrigin}, which 
+ * hides the graphic immediately, or {@link #returnToOrigin}, which
  * moves the image to its original location and then disposes it.
  */
 public class GhostedDragImage {
@@ -46,22 +57,24 @@ public class GhostedDragImage {
     private Point origin;
 
     /** Create a ghosted drag image, using the given icon.
+     * @param dragSource source of the drag
      * @param icon image to be drawn
      * @param initialScreenLoc initial screen location of the image
+     * @param cursorOffset offset of the cursor from the image origin
      */
-    public GhostedDragImage(Component dragSource, final Icon icon, Point initialScreenLoc, 
+    public GhostedDragImage(Component dragSource, final Icon icon, Point initialScreenLoc,
                             final Point cursorOffset) {
         Window parent = dragSource instanceof Window
             ? (Window)dragSource : SwingUtilities.getWindowAncestor(dragSource);
         // FIXME ensure gc is compatible (X11)
         GraphicsConfiguration gc = parent.getGraphicsConfiguration();
         dragImage = new Window(JOptionPane.getRootFrame(), gc) {
-    		private static final long serialVersionUID = 1L;
+            private static final long serialVersionUID = 1L;
             public void paint(Graphics g) {
                 icon.paintIcon(this, g, 0, 0);
             }
             public Dimension getPreferredSize() {
-                return new Dimension(icon.getIconWidth(), icon.getIconHeight()); 
+                return new Dimension(icon.getIconWidth(), icon.getIconHeight());
             }
             public Dimension getMinimumSize() {
                 return getPreferredSize();
@@ -88,7 +101,7 @@ public class GhostedDragImage {
                 icon.paintIcon(c, g, x, y);
                 g.dispose();
             }
-            
+
         };
         dragImage.pack();
         WindowUtils.setWindowMask(dragImage, dragIcon);
@@ -97,18 +110,20 @@ public class GhostedDragImage {
         dragImage.setVisible(true);
     }
 
-    /** Set the transparency of the ghosted image. */
+    /** Set the transparency of the ghosted image.
+     * @param alpha transparency level
+     */
     public void setAlpha(float alpha) {
         WindowUtils.setWindowAlpha(dragImage, alpha);
     }
-    
+
     /** Make all ghosted images go away. */
     public void dispose() {
         dragImage.dispose();
         dragImage = null;
     }
 
-    /** Move the ghosted image to the requested location. 
+    /** Move the ghosted image to the requested location.
      * @param screenLocation Where to draw the image, in screen coordinates
      */
     public void move(Point screenLocation) {
@@ -117,7 +132,7 @@ public class GhostedDragImage {
         }
         dragImage.setLocation(screenLocation.x, screenLocation.y);
     }
-    
+
     private static final int SLIDE_INTERVAL = 1000/30;
     /** Animate the ghosted image returning to its origin. */
     public void returnToOrigin() {

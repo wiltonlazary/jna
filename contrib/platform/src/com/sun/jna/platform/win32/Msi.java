@@ -1,12 +1,24 @@
-/* This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+/*
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32;
 
@@ -20,78 +32,77 @@ import com.sun.jna.win32.W32APIOptions;
  */
 public interface Msi extends StdCallLibrary {
 
-    Msi INSTANCE = (Msi)
-        Native.loadLibrary("msi", Msi.class, W32APIOptions.UNICODE_OPTIONS);
+    Msi INSTANCE = Native.load("msi", Msi.class, W32APIOptions.DEFAULT_OPTIONS);
 
     /**
      * The component being requested is disabled on the computer.
      */
-    static int INSTALLSTATE_NOTUSED = -7;
+    int INSTALLSTATE_NOTUSED = -7;
 
     /**
      * The configuration data is corrupt.
      */
-    static int INSTALLSTATE_BADCONFIG = -6;
+    int INSTALLSTATE_BADCONFIG = -6;
 
     /**
      * The installation is suspended or in progress.
      */
-    static int INSTALLSTATE_INCOMPLETE = -5;
+    int INSTALLSTATE_INCOMPLETE = -5;
 
     /**
      * The feature must run from the source, and the source is unavailable.
      */
-    static int INSTALLSTATE_SOURCEABSENT = -4;
+    int INSTALLSTATE_SOURCEABSENT = -4;
 
     /**
      * The return buffer is full.
      */
-    static int INSTALLSTATE_MOREDATA = -3;
+    int INSTALLSTATE_MOREDATA = -3;
 
     /**
      * An invalid parameter was passed to the function.
      */
-    static int INSTALLSTATE_INVALIDARG = -2;
+    int INSTALLSTATE_INVALIDARG = -2;
 
     /**
      * An unrecognized product or feature was specified.
      */
-    static int INSTALLSTATE_UNKNOWN = -1;
+    int INSTALLSTATE_UNKNOWN = -1;
 
     /**
      * The feature is broken.
      */
-    static int INSTALLSTATE_BROKEN =  0;
+    int INSTALLSTATE_BROKEN =  0;
 
     /**
      * The advertised feature.
      */
-    static int INSTALLSTATE_ADVERTISED =  1;
+    int INSTALLSTATE_ADVERTISED =  1;
 
     /**
      * The component is being removed.
      */
-    static int INSTALLSTATE_REMOVED =  1;
+    int INSTALLSTATE_REMOVED =  1;
 
     /**
      * The feature was uninstalled.
      */
-    static int INSTALLSTATE_ABSENT =  2;
+    int INSTALLSTATE_ABSENT =  2;
 
     /**
      * The feature was installed on the local drive.
      */
-    static int INSTALLSTATE_LOCAL =  3;
+    int INSTALLSTATE_LOCAL =  3;
 
     /**
      * The feature must run from the source, CD-ROM, or network.
      */
-    static int INSTALLSTATE_SOURCE =  4;
+    int INSTALLSTATE_SOURCE =  4;
 
     /**
      * The feature is installed in the default location: local or source.
      */
-    static int INSTALLSTATE_DEFAULT =  5;
+    int INSTALLSTATE_DEFAULT =  5;
 
     /**
      * The MsiGetComponentPath function returns the full path to an installed component. If the key path for the

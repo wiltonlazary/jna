@@ -1,15 +1,29 @@
-/* This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * <p/>
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+/*
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Array;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -18,13 +32,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * An abstraction for a native pointer data type.  A Pointer instance 
- * represents, on the Java side, a native pointer.  The native pointer could 
- * be any <em>type</em> of native pointer.  Methods such as <code>write</code>, 
- * <code>read</code>, <code>getXXX</code>, and <code>setXXX</code>, provide 
+ * An abstraction for a native pointer data type.  A Pointer instance
+ * represents, on the Java side, a native pointer.  The native pointer could
+ * be any <em>type</em> of native pointer.  Methods such as <code>write</code>,
+ * <code>read</code>, <code>getXXX</code>, and <code>setXXX</code>, provide
  * means to access memory underlying the native pointer.<p>
  * While a constructor exists to create a Pointer from an integer value, it's
- * not generally a good idea to be creating pointers that way. 
+ * not generally a good idea to be creating pointers that way.
  *
  * @author Sheng Liang, originator
  * @author Todd Fast, suitability modifications
@@ -33,24 +47,14 @@ import java.util.List;
  */
 public class Pointer {
 
-    /** Size of a native pointer, in bytes. */
-    public static final int SIZE;
-    
-    static {
-        // Force load of native library
-        if ((SIZE = Native.POINTER_SIZE) == 0) {
-            throw new Error("Native library not initialized");
-        }
-    }
-    
     /** Convenience constant, same as <code>null</code>. */
     public static final Pointer NULL = null;
-    
+
     /** Convenience constant, equivalent to <code>(void*)CONSTANT</code>. */
     public static final Pointer createConstant(long peer) {
         return new Opaque(peer);
     }
-    
+
     /** Convenience constant, equivalent to <code>(void*)CONSTANT</code>.
         This version will avoid setting any of the high bits on 64-bit
         systems.
@@ -58,14 +62,16 @@ public class Pointer {
     public static final Pointer createConstant(int peer) {
         return new Opaque((long)peer & 0xFFFFFFFF);
     }
-    
-    /** Pointer value of the real native pointer. Use long to be 64-bit safe. 
+
+    /** Pointer value of the real native pointer. Use long to be 64-bit safe.
      */
     protected long peer;
 
     /** Derived class must assign peer pointer value. */
-    Pointer() { }
-    
+    Pointer() {
+        super();
+    }
+
     /** Create from native pointer.  Don't use this unless you know what
      * you're doing.
      */
@@ -77,12 +83,14 @@ public class Pointer {
     public Pointer share(long offset) {
         return share(offset, 0);
     }
-    
+
     /** Provide a view of this memory using the given offset to calculate a
      * new base address, bounds-limiting the memory with the given size.
      */
     public Pointer share(long offset, long sz) {
-        if (offset == 0) return this;
+        if (offset == 0L) {
+            return this;
+        }
         return new Pointer(peer + offset);
     }
 
@@ -91,27 +99,18 @@ public class Pointer {
         setMemory(0, size, (byte)0);
     }
 
-    /**
-     * Compares this <code>Pointer</code> to the specified object.
-     *
-     * @param	o 
-     *			A <code>Pointer</code> instance
-     * @return	True if the other object is a <code>Pointer</code>, 
-     *          and the C pointers being pointed to by these objects are also
-     *			equal. Returns false otherwise.
-     */
+    @Override
     public boolean equals(Object o) {
-        if (o == this) return true;
-        if (o == null) return false;
-        return o instanceof Pointer && ((Pointer)o).peer == peer;
+        if (o == this) {
+            return true;
+        }
+        if (o == null) {
+            return false;
+        }
+        return (o instanceof Pointer) && (((Pointer)o).peer == peer);
     }
 
-    /**
-     * Returns a hashcode for the native pointer represented by this
-     * <code>Pointer</code> object
-     *
-     * @return	A hash code value for the represented native pointer
-     */
+    @Override
     public int hashCode() {
         return (int)((peer >>> 32) + (peer & 0xFFFFFFFF));
     }
@@ -125,20 +124,20 @@ public class Pointer {
      * or -1 if the value is not found.
      */
     public long indexOf(long offset, byte value) {
-        return Native.indexOf(peer + offset, value);
+        return Native.indexOf(this, this.peer, offset, value);
     }
-    
+
     /**
      * Indirect the native pointer, copying <em>from</em> memory pointed to by
      * native pointer, into the specified array.
      *
-     * @param offset byte offset from pointer into which data is copied
+     * @param offset byte offset from pointer from which data is copied
      * @param buf    <code>byte</code> array into which data is copied
-     * @param index  array index from which to start copying
+     * @param index  array index to which data is copied
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, byte[] buf, int index, int length) {
-        Native.read(peer + offset, buf, index, length);
+        Native.read(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -151,7 +150,7 @@ public class Pointer {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, short[] buf, int index, int length) {
-        Native.read(peer + offset, buf, index, length);
+        Native.read(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -164,9 +163,9 @@ public class Pointer {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, char[] buf, int index, int length) {
-        Native.read(peer + offset, buf, index, length);
+        Native.read(this, this.peer, offset, buf, index, length);
     }
-    
+
     /**
      * Indirect the native pointer, copying <em>from</em> memory pointed to by
      * native pointer, into the specified array.
@@ -177,7 +176,7 @@ public class Pointer {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, int[] buf, int index, int length) {
-        Native.read(peer + offset, buf, index, length);
+        Native.read(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -190,7 +189,7 @@ public class Pointer {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, long[] buf, int index, int length) {
-        Native.read(peer + offset, buf, index, length);
+        Native.read(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -203,7 +202,7 @@ public class Pointer {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, float[] buf, int index, int length) {
-        Native.read(peer + offset, buf, index, length);
+        Native.read(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -216,7 +215,7 @@ public class Pointer {
      * @param length number of elements from native pointer that must be copied
      */
     public void read(long offset, double[] buf, int index, int length) {
-        Native.read(peer + offset, buf, index, length);
+        Native.read(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -230,7 +229,7 @@ public class Pointer {
      */
     public void read(long offset, Pointer[] buf, int index, int length) {
         for (int i=0;i < length;i++) {
-            Pointer p = getPointer(offset + i*Pointer.SIZE);
+            Pointer p = getPointer(offset + i*Native.POINTER_SIZE);
             Pointer oldp = buf[i+index];
             // Avoid replacing the original pointer if it hasn't changed
             if (oldp == null || p == null || p.peer != oldp.peer) {
@@ -255,7 +254,7 @@ public class Pointer {
      *               copied
      */
     public void write(long offset, byte[] buf, int index, int length) {
-        Native.write(peer + offset, buf, index, length);
+        Native.write(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -269,7 +268,7 @@ public class Pointer {
      *               copied
      */
     public void write(long offset, short[] buf, int index, int length) {
-        Native.write(peer + offset, buf, index, length);
+        Native.write(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -283,7 +282,7 @@ public class Pointer {
      *               copied
      */
     public void write(long offset, char[] buf, int index, int length) {
-        Native.write(peer + offset, buf, index, length);
+        Native.write(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -297,11 +296,11 @@ public class Pointer {
      *               copied
      */
     public void write(long offset, int[] buf, int index, int length) {
-        Native.write(peer + offset, buf, index, length);
+        Native.write(this, this.peer, offset, buf, index, length);
     }
 
     /**
-     * Indirect the native pointer, copying <em>into</em> memory pointed to by 
+     * Indirect the native pointer, copying <em>into</em> memory pointed to by
      * native pointer, from the specified array.
      *
      * @param offset byte offset from pointer into which data is copied
@@ -311,7 +310,7 @@ public class Pointer {
      *               copied
      */
     public void write(long offset, long[] buf, int index, int length) {
-        Native.write(peer + offset, buf, index, length);
+        Native.write(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -325,7 +324,7 @@ public class Pointer {
      *               copied
      */
     public void write(long offset, float[] buf, int index, int length) {
-        Native.write(peer + offset, buf, index, length);
+        Native.write(this, this.peer, offset, buf, index, length);
     }
 
     /**
@@ -339,7 +338,7 @@ public class Pointer {
      *               copied
      */
     public void write(long offset, double[] buf, int index, int length) {
-        Native.write(peer + offset, buf, index, length);
+        Native.write(this, this.peer, offset, buf, index, length);
     }
 
     /** Write the given array of Pointer to native memory.
@@ -351,7 +350,7 @@ public class Pointer {
     */
     public void write(long bOff, Pointer[] buf, int index, int length) {
         for (int i=0;i < length;i++) {
-            setPointer(bOff + i * Pointer.SIZE, buf[index + i]);
+            setPointer(bOff + i * Native.POINTER_SIZE, buf[index + i]);
         }
     }
 
@@ -359,71 +358,58 @@ public class Pointer {
     // Java type read methods
     //////////////////////////////////////////////////////////////////////////
 
-    Object getValue(long offset, Class type, Object currentValue) {
+    Object getValue(long offset, Class<?> type, Object currentValue) {
 
         Object result = null;
         if (Structure.class.isAssignableFrom(type)) {
             Structure s = (Structure)currentValue;
             if (Structure.ByReference.class.isAssignableFrom(type)) {
-                s = Structure.updateStructureByReference(type, s, getPointer(offset));
-            }
-            else {
+                s = Structure.updateStructureByReference((Class<Structure>) type, s, getPointer(offset));
+            } else {
                 s.useMemory(this, (int)offset, true);
                 s.read();
             }
             result = s;
-        }
-        else if (type == boolean.class || type == Boolean.class) {
+        } else if (type == boolean.class || type == Boolean.class) {
             result = Function.valueOf(getInt(offset) != 0);
-        }
-        else if (type == byte.class || type == Byte.class) {
-            result = new Byte(getByte(offset));
-        }
-        else if (type == short.class || type == Short.class) {
-            result = new Short(getShort(offset));
-        }
-        else if (type == char.class || type == Character.class) {
-            result = new Character(getChar(offset));
-        }
-        else if (type == int.class || type == Integer.class) {
-            result = new Integer(getInt(offset));
-        }
-        else if (type == long.class || type == Long.class) {
-            result = new Long(getLong(offset));
-        }
-        else if (type == float.class || type == Float.class) {
-            result=new Float(getFloat(offset));
-        }
-        else if (type == double.class || type == Double.class) {
-            result = new Double(getDouble(offset));
-        }
-        else if (Pointer.class.isAssignableFrom(type)) {
+        } else if (type == byte.class || type == Byte.class) {
+            result =  Byte.valueOf(getByte(offset));
+        } else if (type == short.class || type == Short.class) {
+            result = Short.valueOf(getShort(offset));
+        } else if (type == char.class || type == Character.class) {
+            result = Character.valueOf(getChar(offset));
+        } else if (type == int.class || type == Integer.class) {
+            result = Integer.valueOf(getInt(offset));
+        } else if (type == long.class || type == Long.class) {
+            result = Long.valueOf(getLong(offset));
+        } else if (type == float.class || type == Float.class) {
+            result = Float.valueOf(getFloat(offset));
+        } else if (type == double.class || type == Double.class) {
+            result = Double.valueOf(getDouble(offset));
+        } else if (Pointer.class.isAssignableFrom(type)) {
             Pointer p = getPointer(offset);
             if (p != null) {
                 Pointer oldp = currentValue instanceof Pointer
                     ? (Pointer)currentValue : null;
-                if (oldp == null || p.peer != oldp.peer)
+                if (oldp == null || p.peer != oldp.peer) {
                     result = p;
-                else
+                } else {
                     result = oldp;
+                }
             }
-        }
-        else if (type == String.class) {
+        } else if (type == String.class) {
             Pointer p = getPointer(offset);
             result = p != null ? p.getString(0) : null;
-        }
-        else if (type == WString.class) {
+        } else if (type == WString.class) {
             Pointer p = getPointer(offset);
             result = p != null ? new WString(p.getWideString(0)) : null;
-        }
-        else if (Callback.class.isAssignableFrom(type)) {
+        } else if (Callback.class.isAssignableFrom(type)) {
             // Overwrite the Java memory if the native pointer is a different
             // function pointer.
             Pointer fp = getPointer(offset);
             if (fp == null) {
                 result = null;
-            }
-            else {
+            } else {
                 Callback cb = (Callback)currentValue;
                 Pointer oldfp = CallbackReference.getFunctionPointer(cb);
                 if (!fp.equals(oldfp)) {
@@ -431,13 +417,11 @@ public class Pointer {
                 }
                 result = cb;
             }
-        }
-        else if (Platform.HAS_BUFFERS && Buffer.class.isAssignableFrom(type)) {
+        } else if (Platform.HAS_BUFFERS && Buffer.class.isAssignableFrom(type)) {
             Pointer bp = getPointer(offset);
             if (bp == null) {
                 result = null;
-            }
-            else {
+            } else {
                 Pointer oldbp = currentValue == null ? null
                     : Native.getDirectBufferPointer((Buffer)currentValue);
                 if (oldbp == null || !oldbp.equals(bp)) {
@@ -445,8 +429,7 @@ public class Pointer {
                 }
                 result = currentValue;
             }
-        }
-        else if (NativeMapped.class.isAssignableFrom(type)) {
+        } else if (NativeMapped.class.isAssignableFrom(type)) {
             NativeMapped nm = (NativeMapped)currentValue;
             if (nm != null) {
                 Object value = getValue(offset, nm.nativeType(), null);
@@ -454,33 +437,29 @@ public class Pointer {
                 if (nm.equals(result)) {
                     result = nm;
                 }
-            }
-            else {
+            } else {
                 NativeMappedConverter tc = NativeMappedConverter.getInstance(type);
                 Object value = getValue(offset, tc.nativeType(), null);
                 result = tc.fromNative(value, new FromNativeContext(type));
             }
-        }
-        else if (type.isArray()) {
+        } else if (type.isArray()) {
             result = currentValue;
             if (result == null) {
                 throw new IllegalStateException("Need an initialized array");
             }
             readArray(offset, result, type.getComponentType());
-        }
-        else {
-            throw new IllegalArgumentException("Reading \""
-                                               + type + "\" from memory is not supported");
+        } else {
+            throw new IllegalArgumentException("Reading \"" + type + "\" from memory is not supported");
         }
         return result;
     }
 
     /** Read memory starting at offset into the array with element type cls. */
-    private void readArray(long offset, Object o, Class cls) {
+    private void readArray(long offset, Object o, Class<?> cls) {
         int length = 0;
         length = Array.getLength(o);
         Object result = o;
-        
+
         if (cls == byte.class) {
             read(offset, (byte[])result, 0, length);
         }
@@ -510,13 +489,13 @@ public class Pointer {
             if (Structure.ByReference.class.isAssignableFrom(cls)) {
                 Pointer[] parray = getPointerArray(offset, sarray.length);
                 for (int i=0;i < sarray.length;i++) {
-                    sarray[i] = Structure.updateStructureByReference(cls, sarray[i], parray[i]);
+                    sarray[i] = Structure.updateStructureByReference((Class<Structure>) cls, sarray[i], parray[i]);
                 }
             }
             else {
                 Structure first = sarray[0];
                 if (first == null) {
-                    first = Structure.newInstance(cls, share(offset));
+                    first = Structure.newInstance((Class<Structure>) cls, share(offset));
                     first.conditionalAutoRead();
                     sarray[0] = first;
                 }
@@ -562,7 +541,7 @@ public class Pointer {
      * @return the <code>byte</code> value being pointed to
      */
     public byte getByte(long offset) {
-        return Native.getByte(peer + offset);
+        return Native.getByte(this, this.peer, offset);
     }
 
     /**
@@ -574,7 +553,7 @@ public class Pointer {
      * @return the <code>wchar_t</code> value being pointed to
      */
     public char getChar(long offset) {
-        return Native.getChar(peer + offset);
+        return Native.getChar(this, this.peer, offset);
     }
 
     /**
@@ -586,7 +565,7 @@ public class Pointer {
      * @return the <code>short</code> value being pointed to
      */
     public short getShort(long offset) {
-        return Native.getShort(peer + offset);
+        return Native.getShort(this, this.peer, offset);
     }
 
     /**
@@ -598,7 +577,7 @@ public class Pointer {
      * @return the <code>int</code> value being pointed to
      */
     public int getInt(long offset) {
-        return Native.getInt(peer + offset);
+        return Native.getInt(this, this.peer, offset);
     }
 
     /**
@@ -610,7 +589,7 @@ public class Pointer {
      * @return the <code>long</code> value being pointed to
      */
     public long getLong(long offset) {
-        return Native.getLong(peer + offset);
+        return Native.getLong(this, this.peer, offset);
     }
 
     /**
@@ -634,7 +613,7 @@ public class Pointer {
      * @return the <code>float</code> value being pointed to
      */
     public float getFloat(long offset) {
-        return Native.getFloat(peer + offset);
+        return Native.getFloat(this, this.peer, offset);
     }
 
     /**
@@ -646,7 +625,7 @@ public class Pointer {
      * @return the <code>double</code> value being pointed to
      */
     public double getDouble(long offset) {
-        return Native.getDouble(peer + offset);
+        return Native.getDouble(this, this.peer, offset);
     }
 
     /**
@@ -672,28 +651,12 @@ public class Pointer {
      * @return a direct ByteBuffer that accesses the memory being pointed to,
      */
     public ByteBuffer getByteBuffer(long offset, long length) {
-        return Native.getDirectByteBuffer(peer + offset, length).order(ByteOrder.nativeOrder());
+        return Native.getDirectByteBuffer(this, this.peer, offset, length).order(ByteOrder.nativeOrder());
     }
 
-    /**
-     * Copy native memory to a Java String.  If <code>wide</code> is true,
-     * access the memory as an array of <code>wchar_t</code>, otherwise 
-     * as an array of <code>char</code>, using the default platform encoding.
-     *
-     * @param offset byte offset from pointer to obtain the native string
-v     * @param wide whether to convert from a wide or standard C string
-     * @return the <code>String</code> value being pointed to 
-     * 
-     * @deprecated use {@link #getString(long,String)} or {@link
-     * #getWideString(long)} instead. 
-     */
-    public String getString(long offset, boolean wide) {
-        return wide ? getWideString(offset) : getString(offset);
-    }
-    
     /** Read a wide (<code>const wchar_t *</code>) string from memory. */
     public String getWideString(long offset) {
-        return Native.getWideString(peer + offset);
+        return Native.getWideString(this, this.peer, offset);
     }
 
     /**
@@ -701,7 +664,7 @@ v     * @param wide whether to convert from a wide or standard C string
      * form {@link Native#getDefaultStringEncoding()}.
      *
      * @param offset byte offset from pointer to start reading bytes
-     * @return the <code>String</code> value being pointed to 
+     * @return the <code>String</code> value being pointed to
      */
     public String getString(long offset) {
         return getString(offset, Native.getDefaultStringEncoding());
@@ -712,10 +675,10 @@ v     * @param wide whether to convert from a wide or standard C string
      *
      * @param offset byte offset from pointer to obtain the native string
      * @param encoding the desired encoding
-     * @return the <code>String</code> value being pointed to 
+     * @return the <code>String</code> value being pointed to
      */
     public String getString(long offset, String encoding) {
-        return Native.getString(peer + offset, encoding);
+        return Native.getString(this, offset, encoding);
     }
 
     /** Read a native array of bytes of size <code>arraySize</code> from the
@@ -726,7 +689,7 @@ v     * @param wide whether to convert from a wide or standard C string
         read(offset, buf, 0, arraySize);
         return buf;
     }
-    
+
     /** Read a native array of wchar_t of size <code>arraySize</code> from the
         given <code>offset</code> from this {@link Pointer}.
     */
@@ -785,15 +748,15 @@ v     * @param wide whether to convert from a wide or standard C string
      * determined by a NULL-valued terminating element.
      */
     public Pointer[] getPointerArray(long offset) {
-        List array = new ArrayList();
+        List<Pointer> array = new ArrayList<Pointer>();
         int addOffset = 0;
         Pointer p = getPointer(offset);
         while (p != null) {
             array.add(p);
-            addOffset += Pointer.SIZE;
+            addOffset += Native.POINTER_SIZE;
             p = getPointer(offset + addOffset);
         }
-        return (Pointer[])array.toArray(new Pointer[array.size()]);
+        return array.toArray(new Pointer[0]);
     }
 
     /** Returns an array of {@link Pointer} of the requested size. */
@@ -803,10 +766,10 @@ v     * @param wide whether to convert from a wide or standard C string
         return buf;
     }
 
-    /** Returns an array of <code>String</code> based on a native array
+    /** <p>Returns an array of <code>String</code> based on a native array
      * of <code>char *</code>.  The array length is determined by a
-     * NULL-valued terminating element. 
-     * <p/>
+     * NULL-valued terminating element.
+     * </p>
      * The strings are decoded using the encoding returned by {@link
      * Native#getDefaultStringEncoding()}.
      */
@@ -816,15 +779,15 @@ v     * @param wide whether to convert from a wide or standard C string
 
     /** Returns an array of <code>String</code> based on a native array
      * of <code>char *</code>, using the requested encoding.  The array length
-     * is determined by a NULL-valued terminating element. 
+     * is determined by a NULL-valued terminating element.
      */
     public String[] getStringArray(long offset, String encoding) {
         return getStringArray(offset, -1, encoding);
     }
 
-    /** Returns an array of <code>String</code> based on a native array
-     * of <code>char *</code>, using the given array length. 
-     * <p/>
+    /** <p>Returns an array of <code>String</code> based on a native array
+     * of <code>char *</code>, using the given array length.
+     * </p>
      * The strings are decoded using the encoding returned by {@link
      * Native#getDefaultStringEncoding()}.
      */
@@ -832,35 +795,12 @@ v     * @param wide whether to convert from a wide or standard C string
         return getStringArray(offset, length, Native.getDefaultStringEncoding());
     }
 
-    /** Returns an array of <code>String</code> based on a native array
-     * of <code>char*</code> or <code>wchar_t*</code> based on the
-     * <code>wide</code> parameter.  The array length is determined by a
-     * NULL-valued terminating element. 
-     * 
-     * @deprecated use {@link #getStringArray(long,String)} or {@link
-     * #getWideStringArray(long)} instead.
-     */
-    public String[] getStringArray(long offset, boolean wide) {
-        return getStringArray(offset, -1, wide);
-    }
-
     public String[] getWideStringArray(long offset) {
         return getWideStringArray(offset, -1);
     }
 
     public String[] getWideStringArray(long offset, int length) {
-        return getStringArray(offset, -1, NativeString.WIDE_STRING);
-    }
-
-    /** Returns an array of <code>String</code> based on a native array
-     * of <code>char*</code> or <code>wchar_t*</code> based on the
-     * <code>wide</code> parameter, using the given array length.
-     * 
-     * @deprecated use {@link #getStringArray(long,int,String)} or {@link
-     * #getWideStringArray(long,int)} instead.
-     */
-    public String[] getStringArray(long offset, int length, boolean wide) {
-        return getStringArray(offset, length, wide ? NativeString.WIDE_STRING : Native.getDefaultStringEncoding());
+        return getStringArray(offset, length, NativeString.WIDE_STRING);
     }
 
     /** Returns an array of <code>String</code> based on a native array
@@ -871,7 +811,7 @@ v     * @param wide whether to convert from a wide or standard C string
      * @param encoding
      */
     public String[] getStringArray(long offset, int length, String encoding) {
-        List strings = new ArrayList();
+        List<String> strings = new ArrayList<String>();
         Pointer p;
         int addOffset = 0;
         if (length != -1) {
@@ -880,69 +820,56 @@ v     * @param wide whether to convert from a wide or standard C string
             while (count++ < length) {
                 String s = p == null
                     ? null
-                    : (encoding == NativeString.WIDE_STRING
+                    : (NativeString.WIDE_STRING.equals(encoding)
                        ? p.getWideString(0) : p.getString(0, encoding));
                 strings.add(s);
                 if (count < length) {
-                    addOffset += SIZE;
+                    addOffset += Native.POINTER_SIZE;
                     p = getPointer(offset + addOffset);
                 }
             }
-        }
-        else {
+        } else {
             while ((p = getPointer(offset + addOffset)) != null) {
-                String s = p == null
-                    ? null
-                    : (encoding == NativeString.WIDE_STRING
-                       ? p.getWideString(0) : p.getString(0, encoding));
+                String s = NativeString.WIDE_STRING.equals(encoding)
+                        ? p.getWideString(0)
+                        : p.getString(0, encoding);
                 strings.add(s);
-                addOffset += SIZE;
+                addOffset += Native.POINTER_SIZE;
             }
         }
-        return (String[])strings.toArray(new String[strings.size()]);
+        return strings.toArray(new String[0]);
     }
 
     //////////////////////////////////////////////////////////////////////////
     // Java type write methods
     //////////////////////////////////////////////////////////////////////////
 
-    void setValue(long offset, Object value, Class type) {
+    void setValue(long offset, Object value, Class<?> type) {
 
         // Set the value at the offset according to its type
         if (type == boolean.class || type == Boolean.class) {
             setInt(offset, Boolean.TRUE.equals(value) ? -1 : 0);
-        }
-        else if (type == byte.class || type == Byte.class) {
+        } else if (type == byte.class || type == Byte.class) {
             setByte(offset, value == null ? 0 : ((Byte)value).byteValue());
-        }
-        else if (type == short.class || type == Short.class) {
+        } else if (type == short.class || type == Short.class) {
             setShort(offset, value == null ? 0 : ((Short)value).shortValue());
-        }
-        else if (type == char.class || type == Character.class) {
+        } else if (type == char.class || type == Character.class) {
             setChar(offset, value == null ? 0 : ((Character)value).charValue());
-        }
-        else if (type == int.class || type == Integer.class) {
+        } else if (type == int.class || type == Integer.class) {
             setInt(offset, value == null ? 0 : ((Integer)value).intValue());
-        }
-        else if (type == long.class || type == Long.class) {
+        } else if (type == long.class || type == Long.class) {
             setLong(offset, value == null ? 0 : ((Long)value).longValue());
-        }
-        else if (type == float.class || type == Float.class) {
+        } else if (type == float.class || type == Float.class) {
             setFloat(offset, value == null ? 0f : ((Float)value).floatValue());
-        }
-        else if (type == double.class || type == Double.class) {
+        } else if (type == double.class || type == Double.class) {
             setDouble(offset, value == null ? 0.0 : ((Double)value).doubleValue());
-        }
-        else if (type == Pointer.class) {
+        } else if (type == Pointer.class) {
             setPointer(offset, (Pointer)value);
-        }
-        else if (type == String.class) {
+        } else if (type == String.class) {
             setPointer(offset, (Pointer)value);
-        }
-        else if (type == WString.class) {
+        } else if (type == WString.class) {
             setPointer(offset, (Pointer)value);
-        }
-        else if (Structure.class.isAssignableFrom(type)) {
+        } else if (Structure.class.isAssignableFrom(type)) {
             Structure s = (Structure)value;
             if (Structure.ByReference.class.isAssignableFrom(type)) {
                 setPointer(offset, s == null ? null : s.getPointer());
@@ -954,84 +881,68 @@ v     * @param wide whether to convert from a wide or standard C string
                 s.useMemory(this, (int)offset, true);
                 s.write();
             }
-        }
-        else if (Callback.class.isAssignableFrom(type)) {
+        } else if (Callback.class.isAssignableFrom(type)) {
             setPointer(offset, CallbackReference.getFunctionPointer((Callback)value));
-        }
-        else if (Platform.HAS_BUFFERS && Buffer.class.isAssignableFrom(type)) {
+        } else if (Platform.HAS_BUFFERS && Buffer.class.isAssignableFrom(type)) {
             Pointer p = value == null ? null
                 : Native.getDirectBufferPointer((Buffer)value);
             setPointer(offset, p);
-        }
-        else if (NativeMapped.class.isAssignableFrom(type)) {
+        } else if (NativeMapped.class.isAssignableFrom(type)) {
             NativeMappedConverter tc = NativeMappedConverter.getInstance(type);
-            Class nativeType = tc.nativeType();
+            Class<?> nativeType = tc.nativeType();
             setValue(offset, tc.toNative(value, new ToNativeContext()), nativeType);
-        }
-        else if (type.isArray()) {
+        } else if (type.isArray()) {
             writeArray(offset, value, type.getComponentType());
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Writing " + type + " to memory is not supported");
         }
     }
 
     /** Write memory starting at offset from the array with element type cls. */
-    private void writeArray(long offset, Object value, Class cls) {
+    private void writeArray(long offset, Object value, Class<?> cls) {
         if (cls == byte.class) {
             byte[] buf = (byte[])value;
             write(offset, buf, 0, buf.length);
-        }
-        else if (cls == short.class) {
+        } else if (cls == short.class) {
             short[] buf = (short[])value;
             write(offset, buf, 0, buf.length);
-        }
-        else if (cls == char.class) {
+        } else if (cls == char.class) {
             char[] buf = (char[])value;
             write(offset, buf, 0, buf.length);
-        }
-        else if (cls == int.class) {
+        } else if (cls == int.class) {
             int[] buf = (int[])value;
             write(offset, buf, 0, buf.length);
-        }
-        else if (cls == long.class) {
+        } else if (cls == long.class) {
             long[] buf = (long[])value;
             write(offset, buf, 0, buf.length);
-        }
-        else if (cls == float.class) {
+        } else if (cls == float.class) {
             float[] buf = (float[])value;
             write(offset, buf, 0, buf.length);
-        }
-        else if (cls == double.class) {
+        } else if (cls == double.class) {
             double[] buf = (double[])value;
             write(offset, buf, 0, buf.length);
-        }
-        else if (Pointer.class.isAssignableFrom(cls)) {
+        } else if (Pointer.class.isAssignableFrom(cls)) {
             Pointer[] buf = (Pointer[])value;
             write(offset, buf, 0, buf.length);
-        }
-        else if (Structure.class.isAssignableFrom(cls)) {
+        } else if (Structure.class.isAssignableFrom(cls)) {
             Structure[] sbuf = (Structure[])value;
             if (Structure.ByReference.class.isAssignableFrom(cls)) {
                 Pointer[] buf = new Pointer[sbuf.length];
                 for (int i=0;i < sbuf.length;i++) {
                     if (sbuf[i] == null) {
                         buf[i] = null;
-                    }
-                    else {
+                    } else {
                         buf[i] = sbuf[i].getPointer();
                         sbuf[i].write();
                     }
                 }
                 write(offset, buf, 0, buf.length);
-            }
-            else {
+            } else {
                 Structure first = sbuf[0];
                 if (first == null) {
-                    first = Structure.newInstance(cls, share(offset));
+                    first = Structure.newInstance((Class<Structure>) cls, share(offset));
                     sbuf[0] = first;
-                }
-                else {
+                } else {
                     first.useMemory(this, (int)offset, true);
                 }
                 first.write();
@@ -1039,50 +950,47 @@ v     * @param wide whether to convert from a wide or standard C string
                 for (int i=1;i < sbuf.length;i++) {
                     if (sbuf[i] == null) {
                         sbuf[i] = tmp[i];
-                    }
-                    else {
+                    } else {
                         sbuf[i].useMemory(this, (int)(offset + i * sbuf[i].size()), true);
                     }
                     sbuf[i].write();
                 }
             }
-        }
-        else if (NativeMapped.class.isAssignableFrom(cls)) {
+        } else if (NativeMapped.class.isAssignableFrom(cls)) {
             NativeMapped[] buf = (NativeMapped[])value;
             NativeMappedConverter tc = NativeMappedConverter.getInstance(cls);
-            Class nativeType = tc.nativeType();
+            Class<?> nativeType = tc.nativeType();
             int size = Native.getNativeSize(value.getClass(), value) / buf.length;
             for (int i=0;i < buf.length;i++) {
                 Object element = tc.toNative(buf[i], new ToNativeContext());
                 setValue(offset + i*size, element, nativeType);
             }
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Writing array of "
                                                + cls + " to memory not supported");
         }
     }
 
-    /** Write <code>value</code> to the requested bank of memory. 
+    /** Write <code>value</code> to the requested bank of memory.
      * @param offset byte offset from pointer to start
      * @param length number of bytes to write
      * @param value value to be written
      */
     public void setMemory(long offset, long length, byte value) {
-        Native.setMemory(peer + offset, length, value);
+        Native.setMemory(this, this.peer, offset, length, value);
     }
-    
+
     /**
      * Set <code>value</code> at location being pointed to. This is equivalent
      * to the expression
      * <code>*((jbyte *)((char *)Pointer + offset)) = value</code>.
      *
-     * @param offset byte offset from pointer at which <code>value</code>
-     *		     must be set
+     * @param offset byte offset from pointer at which <code>value</code> must
+     *               be set
      * @param value <code>byte</code> value to set
      */
     public void setByte(long offset, byte value) {
-        Native.setByte(peer + offset, value);
+        Native.setByte(this, this.peer, offset, value);
     }
 
     /**
@@ -1090,14 +998,14 @@ v     * @param wide whether to convert from a wide or standard C string
      * to the expression
      * <code>*((jshort *)((char *)Pointer + offset)) = value</code>.
      *
-     * @param offset byte offset from pointer at which <code>value</code>
-     *		     must be set
+     * @param offset byte offset from pointer at which <code>value</code> must
+     *               be set
      * @param value <code>short</code> value to set
      */
     public void setShort(long offset, short value) {
-        Native.setShort(peer + offset, value);
+        Native.setShort(this, this.peer, offset, value);
     }
-    
+
     /**
      * Set <code>value</code> at location being pointed to. This is equivalent
      * to the expression
@@ -1108,20 +1016,20 @@ v     * @param wide whether to convert from a wide or standard C string
      * @param value <code>char</code> value to set
      */
     public void setChar(long offset, char value) {
-        Native.setChar(peer + offset, value);
+        Native.setChar(this, this.peer, offset, value);
     }
-    
+
     /**
      * Set <code>value</code> at location being pointed to. This is equivalent
      * to the expression
      * <code>*((jint *)((char *)Pointer + offset)) = value</code>.
      *
-     * @param offset byte offset from pointer at which <code>value</code>
-     *		     must be set
+     * @param offset byte offset from pointer at which <code>value</code> must
+     *               be set
      * @param value <code>int</code> value to set
      */
     public void setInt(long offset, int value) {
-        Native.setInt(peer + offset, value);
+        Native.setInt(this, this.peer, offset, value);
     }
 
     /**
@@ -1134,9 +1042,9 @@ v     * @param wide whether to convert from a wide or standard C string
      * @param value <code>long</code> value to set
      */
     public void setLong(long offset, long value) {
-        Native.setLong(peer + offset, value);
+        Native.setLong(this, this.peer, offset, value);
     }
-    
+
     /**
      * Set <code>value</code> at location being pointed to. This is equivalent
      * to the expression
@@ -1164,9 +1072,9 @@ v     * @param wide whether to convert from a wide or standard C string
      * @param value <code>float</code> value to set
      */
     public void setFloat(long offset, float value) {
-        Native.setFloat(peer + offset, value);
+        Native.setFloat(this, this.peer, offset, value);
     }
-    
+
     /**
      * Set <code>value</code> at location being pointed to. This is equivalent
      * to the expression
@@ -1177,64 +1085,42 @@ v     * @param wide whether to convert from a wide or standard C string
      * @param value <code>double</code> value to set
      */
     public void setDouble(long offset, double value) {
-        Native.setDouble(peer + offset, value);
+        Native.setDouble(this, this.peer, offset, value);
     }
 
     /**
      * Set <code>value</code> at location being pointed to. This is equivalent
-     * to the expression 
+     * to the expression
      * <code>*((void **)((char *)Pointer + offset)) = value</code>.
      *
-     * @param offset byte offset from pointer at which <code>value</code> 
+     * @param offset byte offset from pointer at which <code>value</code>
      *               must be set
-     * @param value <code>Pointer</code> holding the actual pointer value to 
+     * @param value <code>Pointer</code> holding the actual pointer value to
      * set, which may be <code>null</code> to indicate a <code>NULL</code>
      * pointer.
      */
     public void setPointer(long offset, Pointer value) {
-        Native.setPointer(peer + offset, value != null ? value.peer : 0);
+        Native.setPointer(this, this.peer, offset, value != null ? value.peer : 0);
     }
 
     /**
-     * Copy string <code>value</code> to the location being pointed to.  
-     *
-     * @param offset byte offset from pointer at which characters in
-     * 		     <code>value</code> must be set
-     * @param value  <code>java.lang.String</code> value to set
-     * @param wide whether to write the native string as an array of 
-     * <code>wchar_t</code>.  If false, writes as a NUL-terminated array of 
-     * <code>char</code> using the encoding indicated by {@link
-     * Native#getDefaultStringEncoding()}. 
-     * 
-     * @deprecated use {@link #setWideString(long,String)} instead.
-     */
-    public void setString(long offset, String value, boolean wide) {
-        if (wide) {
-            setWideString(offset, value);
-        }
-        else {
-            setString(offset, value);
-        }
-    }
-    
-    /**
      * Copy string <code>value</code> to the location being pointed to as a
-     * wide string (<code>wchar_t*</code>).  
+     * wide string (<code>wchar_t*</code>).
      *
      * @param offset byte offset from pointer at which characters in
-     * 		     <code>value</code> must be set
+     *               <code>value</code> must be set
      * @param value  <code>java.lang.String</code> value to set
      */
     public void setWideString(long offset, String value) {
-        Native.setWideString(peer + offset, value);
+        Native.setWideString(this, this.peer, offset, value);
     }
 
     /**
      * Copy string <code>value</code> to the location being pointed to as a
-     * wide string (<code>wchar_t*</code>).  
+     * wide string (<code>wchar_t*</code>).
      *
      * @param offset byte offset from pointer at which characters in
-     * 		     <code>value</code> must be set
+     *               <code>value</code> must be set
      * @param value  <code>WString</code> value to set
      */
     public void setString(long offset, WString value) {
@@ -1244,7 +1130,7 @@ v     * @param wide whether to convert from a wide or standard C string
     /**
      * Copy bytes out of string <code>value</code> to the location being
      * pointed to, using the encoding indicated by {@link
-     * Native#getDefaultStringEncoding()}. 
+     * Native#getDefaultStringEncoding()}.
      *
      * @param offset byte offset from pointer at which characters in
      *               <code>value</code> must be set
@@ -1256,7 +1142,7 @@ v     * @param wide whether to convert from a wide or standard C string
 
     /**
      * Copy string <code>value</code> to the location being pointed to, using
-     * the requested encoding.  
+     * the requested encoding.
      *
      * @param offset byte offset from pointer at which characters in
      *               <code>value</code> must be set
@@ -1268,31 +1154,37 @@ v     * @param wide whether to convert from a wide or standard C string
         write(offset, data, 0, data.length);
         setByte(offset + data.length, (byte)0);
     }
-    
+
     /** Dump memory for debugging purposes. */
     public String dump(long offset, int size) {
-        String LS = System.getProperty("line.separator");
-        String contents = "memory dump" + LS;
         final int BYTES_PER_ROW = 4;
-        byte[] buf = getByteArray(offset, size);
-        for (int i=0;i < buf.length;i++) {
-            if ((i % BYTES_PER_ROW) == 0) contents += "[";
-            if (buf[i] >=0 && buf[i] < 16)
-                contents += "0";
-            contents += Integer.toHexString(buf[i] & 0xFF);
-            if ((i % BYTES_PER_ROW) == BYTES_PER_ROW-1 && i < buf.length-1)
-                contents += "]" + LS;
+        final String TITLE = "memory dump";
+        // estimate initial size assuming a 2 char line separator
+        StringWriter sw = new StringWriter(TITLE.length() + 2 + size * 2 + (size / BYTES_PER_ROW * 4));
+        PrintWriter out = new PrintWriter(sw);
+        out.println(TITLE);
+//        byte[] buf = getByteArray(offset, size);
+        for (int i=0;i < size;i++) {
+//            byte b = buf[i];
+            byte b = getByte(offset + i);
+            if ((i % BYTES_PER_ROW) == 0) out.print("[");
+            if (b >=0 && b < 16)
+                out.print("0");
+            out.print(Integer.toHexString(b & 0xFF));
+            if ((i % BYTES_PER_ROW) == BYTES_PER_ROW-1 && i < size-1)
+                out.println("]");
         }
-        if (!contents.endsWith("]" + LS)) {
-            contents += "]" + LS;
+        if (sw.getBuffer().charAt(sw.getBuffer().length() - 2) != ']') {
+            out.println("]");
         }
-        return contents;
+        return sw.toString();
     }
 
+    @Override
     public String toString() {
         return "native@0x" + Long.toHexString(peer);
     }
-    
+
     /** Read the native peer value.  Use with caution. */
     public static long nativeValue(Pointer p) {
         return p == null ? 0 : p.peer;
@@ -1307,129 +1199,175 @@ v     * @param wide whether to convert from a wide or standard C string
     private static class Opaque extends Pointer {
         private Opaque(long peer) { super(peer); }
         private final String MSG = "This pointer is opaque: " + this;
+        @Override
         public Pointer share(long offset, long size) {
             throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void clear(long size) {
             throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public long indexOf(long offset, byte value) {
             throw new UnsupportedOperationException(MSG);
         }
-        public void read(long bOff, byte[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void read(long bOff, byte[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void read(long bOff, char[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void read(long bOff, char[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void read(long bOff, short[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void read(long bOff, short[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void read(long bOff, int[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void read(long bOff, int[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void read(long bOff, long[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void read(long bOff, long[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void read(long bOff, float[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void read(long bOff, float[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void read(long bOff, double[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void read(long bOff, double[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void read(long bOff, Pointer[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void read(long bOff, Pointer[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void write(long bOff, byte[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void write(long bOff, byte[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void write(long bOff, char[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void write(long bOff, char[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void write(long bOff, short[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void write(long bOff, short[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void write(long bOff, int[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void write(long bOff, int[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void write(long bOff, long[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void write(long bOff, long[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void write(long bOff, float[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void write(long bOff, float[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void write(long bOff, double[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void write(long bOff, double[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
-        public void write(long bOff, Pointer[] buf, int index, int length) { 
-            throw new UnsupportedOperationException(MSG); 
+        @Override
+        public void write(long bOff, Pointer[] buf, int index, int length) {
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public ByteBuffer getByteBuffer(long offset, long length) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public byte getByte(long bOff) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public char getChar(long bOff) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public short getShort(long bOff) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public int getInt(long bOff) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public long getLong(long bOff) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public float getFloat(long bOff) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public double getDouble(long bOff) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public Pointer getPointer(long bOff) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public String getString(long bOff, String encoding) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public String getWideString(long bOff) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void setByte(long bOff, byte value) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void setChar(long bOff, char value) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void setShort(long bOff, short value) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void setInt(long bOff, int value) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void setLong(long bOff, long value) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void setFloat(long bOff, float value) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void setDouble(long bOff, double value) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void setPointer(long offset, Pointer value) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void setString(long offset, String value, String encoding) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void setWideString(long offset, String value) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
         public void setMemory(long offset, long size, byte value) {
-            throw new UnsupportedOperationException(MSG); 
+            throw new UnsupportedOperationException(MSG);
         }
+        @Override
+        public String dump(long offset, int size) {
+            throw new UnsupportedOperationException(MSG);
+        }
+        @Override
         public String toString() {
             return "const@0x" + Long.toHexString(peer);
         }

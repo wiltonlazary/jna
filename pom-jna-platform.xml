@@ -6,12 +6,12 @@
 
   <groupId>net.java.dev.jna</groupId>
   <artifactId>jna-platform</artifactId>
-  <version>4.1.0</version>
+  <version>TEMPLATE</version>
   <packaging>jar</packaging>
 
   <name>Java Native Access Platform</name>
   <description>Java Native Access Platform</description>
-  <url>https://github.com/twall/jna</url>
+  <url>https://github.com/java-native-access/jna</url>
 
   <licenses>
       <license>
@@ -20,16 +20,16 @@
           <distribution>repo</distribution>
       </license>
       <license>
-          <name>ASL, version 2</name>
-          <url>http://www.apache.org/licenses/</url>
+          <name>Apache License v2.0</name>
+          <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
           <distribution>repo</distribution>
       </license>
   </licenses>
 
   <scm>
-    <connection>scm:git:https://github.com/twall/jna</connection>
-    <developerConnection>scm:git:ssh://git@github.com/twall/jna.git</developerConnection>
-    <url>https://github.com/twall/jna</url>
+    <connection>scm:git:https://github.com/java-native-access/jna</connection>
+    <developerConnection>scm:git:ssh://git@github.com/java-native-access/jna.git</developerConnection>
+    <url>https://github.com/java-native-access/jna</url>
   </scm>
 
   <developers>
@@ -40,13 +40,21 @@
         <role>Owner</role>
       </roles>
     </developer>
+    <developer>
+      <email>mblaesing@doppel-helix.eu</email>
+      <name>Matthias Bläsing</name>
+      <url>https://github.com/matthiasblaesing/</url>
+      <roles>
+        <role>Developer</role>
+      </roles>
+    </developer>
   </developers>
 
   <dependencies>
     <dependency>
       <groupId>net.java.dev.jna</groupId>
       <artifactId>jna</artifactId>
-      <version>4.1.0</version>
+      <version>5.5.1-SNAPSHOT</version>
     </dependency>
   </dependencies>
 

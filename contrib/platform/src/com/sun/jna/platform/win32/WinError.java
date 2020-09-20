@@ -1,14 +1,25 @@
 /* Copyright (c) 2011 Daniel Doubrovkine, All Rights Reserved
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ *
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32;
 
@@ -11586,7 +11597,7 @@ public interface WinError {
     //
     // There is a mismatch between the tag specified in the request and the tag
     // present in the reparse point.
-    // 
+    //
     //
     int ERROR_REPARSE_TAG_MISMATCH = 4394;
 
@@ -24953,7 +24964,7 @@ public interface WinError {
     //
     // There was an error in a Windows GDI call while converting the DIB to a
     // bitmap.
-    // 
+    //
     //
     int CONVERT10_E_STG_DIB_TO_BITMAP = 0x800401C6;
 
@@ -28015,10 +28026,10 @@ public interface WinError {
 
     /*
      * ++
-     * 
+     *
      * MessageId's 0x0305 - 0x031f (inclusive) are reserved for **STORAGE** copy
      * protection errors.
-     * 
+     *
      * --
      */
     //
@@ -28088,10 +28099,10 @@ public interface WinError {
 
     /*
      * ++
-     * 
+     *
      * MessageId's 0x0305 - 0x031f (inclusive) are reserved for **STORAGE** copy
      * protection errors.
-     * 
+     *
      * --
      */
     // ******************
@@ -29698,7 +29709,7 @@ public interface WinError {
     // MessageText:
     //
     // The specified data could not be decrypted.
-    // 
+    //
     //
     int SEC_E_DECRYPT_FAILURE = 0x80090330;
 
@@ -30599,7 +30610,7 @@ public interface WinError {
     // MessageText:
     //
     // OSS Certificate encode/decode error code base
-    // 
+    //
     // See asn1code.h for a definition of the OSS runtime errors. The OSS
     // error values are offset by CRYPT_E_OSS_ERROR.
     //
@@ -31026,7 +31037,7 @@ public interface WinError {
     // MessageText:
     //
     // ASN1 Certificate encode/decode error code base.
-    // 
+    //
     // The ASN1 error values are offset by CRYPT_E_ASN1_ERROR.
     //
     int CRYPT_E_ASN1_ERROR = 0x80093100;

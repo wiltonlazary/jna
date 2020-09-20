@@ -1,40 +1,48 @@
 /* Copyright (c) 2010 Daniel Doubrovkine, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32;
 
 import java.awt.Rectangle;
-import java.util.Arrays;
-import java.util.List;
 
 import com.sun.jna.IntegerType;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.PointerType;
 import com.sun.jna.Structure;
+import com.sun.jna.Structure.FieldOrder;
 import com.sun.jna.platform.win32.BaseTSD.LONG_PTR;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.platform.win32.WinNT.HANDLEByReference;
 import com.sun.jna.ptr.ByReference;
-import com.sun.jna.win32.StdCallLibrary;
 
-// TODO: Auto-generated Javadoc
 /**
  * Ported from Windef.h (various macros and types). Microsoft Windows SDK 6.0A.
  *
  * @author dblock[at]dblock.org
  */
 @SuppressWarnings("serial")
-public interface WinDef extends StdCallLibrary {
+public interface WinDef {
 
     /** The max path. */
     int MAX_PATH = 260;
@@ -42,7 +50,7 @@ public interface WinDef extends StdCallLibrary {
     /**
      * 16-bit unsigned integer.
      */
-    public static class WORD extends IntegerType {
+    public static class WORD extends IntegerType implements Comparable<WORD> {
 
         /** The Constant SIZE. */
         public static final int SIZE = 2;
@@ -62,6 +70,11 @@ public interface WinDef extends StdCallLibrary {
          */
         public WORD(long value) {
             super(SIZE, value, true);
+        }
+
+        @Override
+        public int compareTo(WORD other) {
+            return compare(this, other);
         }
     }
 
@@ -102,14 +115,14 @@ public interface WinDef extends StdCallLibrary {
          * @return the value
          */
         public WORD getValue() {
-            return new WORD(getPointer().getInt(0));
+            return new WORD(getPointer().getShort(0));
         }
     }
 
     /**
      * 32-bit unsigned integer.
      */
-    public static class DWORD extends IntegerType {
+    public static class DWORD extends IntegerType implements Comparable<DWORD> {
 
         /** The Constant SIZE. */
         public static final int SIZE = 4;
@@ -137,7 +150,7 @@ public interface WinDef extends StdCallLibrary {
          * @return Low WORD.
          */
         public WORD getLow() {
-            return new WORD(longValue() & 0xFF);
+            return new WORD(longValue() & 0xFFFF);
         }
 
         /**
@@ -146,7 +159,12 @@ public interface WinDef extends StdCallLibrary {
          * @return High WORD.
          */
         public WORD getHigh() {
-            return new WORD((longValue() >> 16) & 0xFF);
+            return new WORD((longValue() >> 16) & 0xFFFF);
+        }
+
+        @Override
+        public int compareTo(DWORD other) {
+            return compare(this, other);
         }
     }
 
@@ -194,7 +212,7 @@ public interface WinDef extends StdCallLibrary {
     /**
      * The Class LONG.
      */
-    public static class LONG extends IntegerType {
+    public static class LONG extends IntegerType implements Comparable<LONG> {
 
         /** The Constant SIZE. */
         public static final int SIZE = Native.LONG_SIZE;
@@ -214,6 +232,11 @@ public interface WinDef extends StdCallLibrary {
         public LONG(long value) {
             super(SIZE, value);
         }
+
+        @Override
+        public int compareTo(LONG other) {
+            return compare(this, other);
+        }
     }
 
     /**
@@ -225,7 +248,7 @@ public interface WinDef extends StdCallLibrary {
          * Instantiates a new LONG by reference.
          */
         public LONGByReference() {
-            this(new LONG(0));
+            this(new LONG(0L));
         }
 
         /**
@@ -260,7 +283,7 @@ public interface WinDef extends StdCallLibrary {
     /**
      * The Class LONGLONG.
      */
-    public static class LONGLONG extends IntegerType {
+    public static class LONGLONG extends IntegerType implements Comparable<LONGLONG> {
 
         /** The Constant SIZE. */
         public static final int SIZE = Native.LONG_SIZE *2;
@@ -279,6 +302,11 @@ public interface WinDef extends StdCallLibrary {
          */
         public LONGLONG(long value) {
             super(8, value, false);
+        }
+
+        @Override
+        public int compareTo(LONGLONG other) {
+            return compare(this, other);
         }
     }
 
@@ -356,6 +384,18 @@ public interface WinDef extends StdCallLibrary {
          */
         public HICON() {
 
+        }
+
+        /**
+         * Instantiates a new hicon from a handle - this is required since
+         * in Win32 API HANDLE and HICON are the same, whereas in Java they
+         * are not, so in order to &quot;cast&quot; the handle we need this
+         * constructor
+         *
+         * @param handle The {@link HANDLE} to cast
+         */
+        public HICON(HANDLE handle) {
+            this(handle.getPointer());
         }
 
         /**
@@ -591,6 +631,49 @@ public interface WinDef extends StdCallLibrary {
     }
 
     /**
+     * Handle to a input locale identifier (formerly called keyboard layout
+     * handle).
+     */
+    public static class HKL extends HANDLE {
+
+        /**
+         * Instantiates a new hkl.
+         */
+        public HKL() {
+
+        }
+
+        /**
+         * Instantiates a new hkl.
+         *
+         * @param p the p
+         */
+        public HKL(Pointer p) {
+            super(p);
+        }
+
+        public HKL(int i) {
+            super(Pointer.createConstant(i));
+        }
+
+        /**
+         * Get the low word (unsigned short).
+         */
+        public int getLanguageIdentifier() {
+            return (int) (Pointer.nativeValue(getPointer()) & 0xFFFF);
+        }
+
+        public int getDeviceHandle() {
+            return (int) (Pointer.nativeValue(getPointer()) >> 16 & 0xFFFF);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%08x", Pointer.nativeValue(getPointer()));
+        }
+    }
+
+    /**
      * Message parameter.
      */
     public static class LPARAM extends LONG_PTR {
@@ -643,7 +726,7 @@ public interface WinDef extends StdCallLibrary {
          * Instantiates a new int ptr.
          */
         public INT_PTR() {
-            super(Pointer.SIZE);
+            super(Native.POINTER_SIZE);
         }
 
         /**
@@ -653,7 +736,7 @@ public interface WinDef extends StdCallLibrary {
          *            the value
          */
         public INT_PTR(long value) {
-            super(Pointer.SIZE, value);
+            super(Native.POINTER_SIZE, value);
         }
 
         /**
@@ -675,7 +758,7 @@ public interface WinDef extends StdCallLibrary {
          * Instantiates a new uint ptr.
          */
         public UINT_PTR() {
-            super(Pointer.SIZE);
+            super(Native.POINTER_SIZE);
         }
 
         /**
@@ -685,7 +768,7 @@ public interface WinDef extends StdCallLibrary {
          *            the value
          */
         public UINT_PTR(long value) {
-            super(Pointer.SIZE, value, true);
+            super(Native.POINTER_SIZE, value, true);
         }
 
         /**
@@ -724,8 +807,8 @@ public interface WinDef extends StdCallLibrary {
     /**
      * The Class RECT.
      */
+    @FieldOrder({"left", "top", "right", "bottom"})
     public class RECT extends Structure {
-
         /** The left. */
         public int left;
 
@@ -738,16 +821,6 @@ public interface WinDef extends StdCallLibrary {
         /** The bottom. */
         public int bottom;
 
-        /*
-         * (non-Javadoc)
-         *
-         * @see com.sun.jna.Structure#getFieldOrder()
-         */
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "left", "top", "right",
-                                                "bottom" });
-        }
-
         /**
          * To rectangle.
          *
@@ -757,11 +830,7 @@ public interface WinDef extends StdCallLibrary {
             return new Rectangle(left, top, right - left, bottom - top);
         }
 
-        /*
-         * (non-Javadoc)
-         *
-         * @see com.sun.jna.Structure#toString()
-         */
+        @Override
         public String toString() {
             return "[(" + left + "," + top + ")(" + right + "," + bottom + ")]";
         }
@@ -770,7 +839,7 @@ public interface WinDef extends StdCallLibrary {
     /**
      * 32-bit unsigned integer.
      */
-    public static class ULONG extends IntegerType {
+    public static class ULONG extends IntegerType implements Comparable<ULONG> {
 
         /** The Constant SIZE. */
         public static final int SIZE = Native.LONG_SIZE;
@@ -788,8 +857,13 @@ public interface WinDef extends StdCallLibrary {
          * @param value
          *            the value
          */
-        public ULONG(int value) {
+        public ULONG(long value) {
             super(SIZE, value, true);
+        }
+
+        @Override
+        public int compareTo(ULONG other) {
+            return compare(this, other);
         }
     }
 
@@ -837,10 +911,10 @@ public interface WinDef extends StdCallLibrary {
     /**
      * The Class ULONGLONG.
      */
-    public static class ULONGLONG extends IntegerType {
+    public static class ULONGLONG extends IntegerType implements Comparable<ULONGLONG> {
 
         /** The Constant SIZE. */
-        public static final int SIZE = Native.LONG_SIZE *2;
+        public static final int SIZE = 8;
 
         /**
          * Instantiates a new ULONGLONG.
@@ -856,6 +930,11 @@ public interface WinDef extends StdCallLibrary {
          */
         public ULONGLONG(long value) {
             super(SIZE, value, true);
+        }
+
+        @Override
+        public int compareTo(ULONGLONG other) {
+            return compare(this, other);
         }
     }
 
@@ -903,7 +982,7 @@ public interface WinDef extends StdCallLibrary {
     /**
      * 64-bit unsigned integer.
      */
-    public static class DWORDLONG extends IntegerType {
+    public static class DWORDLONG extends IntegerType implements Comparable<DWORDLONG> {
 
         /** The Constant SIZE. */
         public static final int SIZE = 8;
@@ -923,6 +1002,11 @@ public interface WinDef extends StdCallLibrary {
          */
         public DWORDLONG(long value) {
             super(SIZE, value, true);
+        }
+
+        @Override
+        public int compareTo(DWORDLONG other) {
+            return compare(this, other);
         }
     }
 
@@ -978,7 +1062,7 @@ public interface WinDef extends StdCallLibrary {
     public static class PVOID extends PointerType {
 
         public PVOID() {
-            // TODO Auto-generated constructor stub
+            super();
         }
 
         /**
@@ -992,44 +1076,77 @@ public interface WinDef extends StdCallLibrary {
     }
 
     /**
-     * Message parameter.
+     * LPVOID is simply a Windows API typedef for void* - to pointer to any type so to speak.
      */
-    public static class LPVOID extends LONG_PTR {
+    public static class LPVOID extends PointerType {
 
         /**
-         * Instantiates a new lpvoid.
+         * Instantiates a new instance to NULL.
          */
         public LPVOID() {
-            this(0);
+            super();
         }
 
         /**
-         * Instantiates a new lpvoid.
-         *
-         * @param value
-         *            the value
+         * Instantiates a new instance using a given pointer.
+         * @param p the pointer
          */
-        public LPVOID(long value) {
-            super(value);
+        public LPVOID(Pointer p) {
+            super(p);
         }
     }
 
     /**
      * The Class POINT.
      */
+    @FieldOrder({"x", "y"})
     public class POINT extends Structure {
 
         /**
          * The Class ByReference.
          */
-        public static class ByReference extends POINT implements
-                                                          Structure.ByReference {
+        public static class ByReference extends POINT implements Structure.ByReference {
+
+            public ByReference() {
+            }
+
+            public ByReference(Pointer memory) {
+                super(memory);
+            }
+
+            public ByReference(int x, int y) {
+                super(x, y);
+            }
+
         }
 
+        /**
+         * The Class ByValue.
+         */
+        public static class ByValue extends POINT implements Structure.ByValue {
+
+            public ByValue() {
+            }
+
+            public ByValue(Pointer memory) {
+                super(memory);
+            }
+
+            public ByValue(int x, int y) {
+                super(x, y);
+            }
+
+        }
+
+        /** The x. */
+        public int x;
+        /** The y. */
+        public int y;
         /**
          * Instantiates a new point.
          */
         public POINT() {
+            super();
         }
 
         /**
@@ -1043,9 +1160,6 @@ public interface WinDef extends StdCallLibrary {
             read();
         }
 
-        /** The y. */
-        public int x, y;
-
         /**
          * Instantiates a new point.
          *
@@ -1058,21 +1172,12 @@ public interface WinDef extends StdCallLibrary {
             this.x = x;
             this.y = y;
         }
-
-        /*
-         * (non-Javadoc)
-         *
-         * @see com.sun.jna.Structure#getFieldOrder()
-         */
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "x", "y" });
-        }
     }
 
     /**
      * 16-bit unsigned short.
      */
-    public static class USHORT extends IntegerType {
+    public static class USHORT extends IntegerType implements Comparable<USHORT> {
 
         /** The Constant SIZE. */
         public static final int SIZE = 2;
@@ -1092,6 +1197,11 @@ public interface WinDef extends StdCallLibrary {
          */
         public USHORT(long value) {
             super(SIZE, value, true);
+        }
+
+        @Override
+        public int compareTo(USHORT other) {
+            return compare(this, other);
         }
     }
 
@@ -1149,7 +1259,7 @@ public interface WinDef extends StdCallLibrary {
     /**
      * 16-bit short.
      */
-    public static class SHORT extends IntegerType {
+    public static class SHORT extends IntegerType implements Comparable<SHORT> {
 
         /** The Constant SIZE. */
         public static final int SIZE = 2;
@@ -1170,12 +1280,17 @@ public interface WinDef extends StdCallLibrary {
         public SHORT(long value) {
             super(SIZE, value, false);
         }
+
+        @Override
+        public int compareTo(SHORT other) {
+            return compare(this, other);
+        }
     }
 
     /**
      * 32-bit unsigned int.
      */
-    public static class UINT extends IntegerType {
+    public static class UINT extends IntegerType implements Comparable<UINT> {
 
         /** The Constant SIZE. */
         public static final int SIZE = 4;
@@ -1195,6 +1310,11 @@ public interface WinDef extends StdCallLibrary {
          */
         public UINT(long value) {
             super(SIZE, value, true);
+        }
+
+        @Override
+        public int compareTo(UINT other) {
+            return compare(this, other);
         }
     }
 
@@ -1257,7 +1377,7 @@ public interface WinDef extends StdCallLibrary {
          * @param value
          *            the value
          */
-        public SCODE(int value) {
+        public SCODE(long value) {
             super(value);
         }
     }
@@ -1328,7 +1448,7 @@ public interface WinDef extends StdCallLibrary {
     /**
      * The Class BOOL.
      */
-    public static class BOOL extends IntegerType {
+    public static class BOOL extends IntegerType implements Comparable<BOOL> {
 
         /** The Constant SIZE. */
         public static final int SIZE = 4;
@@ -1345,15 +1465,91 @@ public interface WinDef extends StdCallLibrary {
          *
          * @param value the value
          */
+        public BOOL(boolean value) {
+            this(value ? 1L : 0L);
+        }
+
+        /**
+         * Instantiates a new bool.
+         *
+         * @param value the value
+         */
         public BOOL(long value) {
             super(SIZE, value, false);
+            assert value == 0 || value == 1;
         }
 
         public boolean booleanValue() {
-            if(this.intValue() > 0)
+            if (this.intValue() > 0) {
                 return true;
-            else
+            } else {
                 return false;
+            }
+        }
+
+        @Override
+        public String toString() {
+            return Boolean.toString(booleanValue());
+        }
+
+        @Override
+        public int compareTo(BOOL other) {
+            return compare(this, other);
+        }
+
+        /**
+         * Compares 2 BOOL values -  - <B>Note:</B> a {@code null}
+         * value is considered <U>greater</U> than any non-{@code null} one
+         * (i.e., {@code null} values are &quot;pushed&quot; to the end
+         * of a sorted array / list of values)
+         *
+         * @param v1 The 1st value
+         * @param v2 The 2nd value
+         * @return 0 if values are equal (including if <U>both</U> are {@code null},
+         * negative if 1st value less than 2nd one, positive otherwise. <B>Note:</B>
+         * the comparison uses the {@link #booleanValue()}.
+         * @see #compare(boolean, boolean)
+         */
+        public static int compare(BOOL v1, BOOL v2) {
+            if (v1 == v2) {
+                return 0;
+            } else if (v1 == null) {
+                return 1;   // v2 cannot be null or v1 == v2 would hold
+            } else if (v2 == null) {
+                return (-1);
+            } else {
+                return compare(v1.booleanValue(), v2.booleanValue());
+            }
+        }
+
+        /**
+         * Compares a BOOL value with a {@code long} one. <B>Note:</B> if
+         * the BOOL value is {@code null} then it is consider <U>greater</U>
+         * than any {@code long} value.
+         *
+         * @param v1 The {@link BOOL} value
+         * @param v2 The {@code boolean} value
+         * @return 0 if values are equal, negative if 1st value less than 2nd one,
+         * positive otherwise. <B>Note:</B> the comparison uses the {@link #longValue()}.
+         * @see #compare(boolean, boolean)
+         */
+        public static int compare(BOOL v1, boolean v2) {
+            if (v1 == null) {
+                return 1;
+            } else {
+                return compare(v1.booleanValue(), v2);
+            }
+        }
+
+        // TODO when JDK 1.7 becomes the min. version, use Boolean.compare(...)
+        public static int compare(boolean v1, boolean v2) {
+            if (v1 == v2) {
+                return 0;
+            } else if (v1) {
+                return 1;   // v2 cannot be true or v1 == v2
+            } else {
+                return (-1);
+            }
         }
     }
 
@@ -1401,7 +1597,7 @@ public interface WinDef extends StdCallLibrary {
     /**
      * The Class UCHAR.
      */
-    public static class UCHAR extends IntegerType {
+    public static class UCHAR extends IntegerType implements Comparable<UCHAR> {
 
         /** The Constant SIZE. */
         public static final int SIZE = 1;
@@ -1413,6 +1609,10 @@ public interface WinDef extends StdCallLibrary {
             this(0);
         }
 
+        public UCHAR(char ch) {
+            this(ch & 0xFF);
+        }
+
         /**
          * Instantiates a new uchar.
          *
@@ -1420,6 +1620,11 @@ public interface WinDef extends StdCallLibrary {
          */
         public UCHAR(long value) {
             super(SIZE, value, true);
+        }
+
+        @Override
+        public int compareTo(UCHAR other) {
+            return compare(this, other);
         }
     }
 
@@ -1448,7 +1653,7 @@ public interface WinDef extends StdCallLibrary {
     /**
      * The Class CHAR.
      */
-    public static class CHAR extends IntegerType {
+    public static class CHAR extends IntegerType implements Comparable<CHAR> {
 
         /** The Constant SIZE. */
         public static final int SIZE = 1;
@@ -1463,10 +1668,24 @@ public interface WinDef extends StdCallLibrary {
         /**
          * Instantiates a new char.
          *
+         * @param ch The {@code char} value
+         */
+        public CHAR(byte ch) {
+            this(ch & 0xFF);
+        }
+
+        /**
+         * Instantiates a new char.
+         *
          * @param value the value
          */
         public CHAR(long value) {
             super(1, value, false);
+        }
+
+        @Override
+        public int compareTo(CHAR other) {
+            return compare(this, other);
         }
     }
 
@@ -1507,56 +1726,52 @@ public interface WinDef extends StdCallLibrary {
          * @return the value
          */
         public CHAR getValue() {
-            return new CHAR(getPointer().getChar(0));
+            return new CHAR(getPointer().getByte(0));
         }
     }
 
-	/**
-	 * handle to an OpenGL rendering context
-	 */
-	public static class HGLRC extends HANDLE {
-	
-	    /**
-	     * Instantiates a new HGLRC .
-	     */
-	    public HGLRC() {
-	
-	    }
-	
-	    /**
-	     * Instantiates a new HGLRC .
-	     *
-	     * @param p
-	     *            the p
-	     */
-	    public HGLRC(Pointer p) {
-	        super(p);
-	    }
-	}
-	
     /**
      * handle to an OpenGL rendering context
      */
-    public static class HGLRCByReference extends HANDLEByReference {
+    public static class HGLRC extends HANDLE {
 
         /**
          * Instantiates a new HGLRC .
          */
-        public HGLRCByReference() {
+        public HGLRC() {
 
         }
 
         /**
          * Instantiates a new HGLRC .
          *
-         * @param p
-         *            the p
+         * @param p the p
+         */
+        public HGLRC(Pointer p) {
+            super(p);
+        }
+    }
+
+    /**
+     * handle to an OpenGL rendering context
+     */
+    public static class HGLRCByReference extends HANDLEByReference {
+
+        /**
+         * Instantiates a new pointer to an HGLRC.
+         */
+        public HGLRCByReference() {
+
+        }
+
+        /**
+         * Instantiates a new pointer to an HGLRC.
+         *
+         * @param h
+         *            Initial valure for the HGLRC
          */
         public HGLRCByReference(HGLRC h) {
             super(h);
         }
     }
-
-	
-	
 }

@@ -1,31 +1,38 @@
 JNA Release Process
 ===================
 
-* Bump version in CHANGES.md and build.xml. Change JNI version in build.xml *only* if
-  JNA's native API has been changed (i.e. md5 changed).  Bump JNA minor version if its Java API
-  has changed significantly or incompatibly.
+* Bump version in CHANGES.md and build.xml, if not already.
+  * Change JNI version in build.xml *only* if JNA's native API has been changed (i.e. md5 changed).
+  * Bump JNA minor version if its Java API has changed significantly or incompatibly.
 
 * If native changes have been made, run `ant native` target on each target
   platform, pushing the resulting target-specific jar (in lib/native) file to master.
 
-* Run `ant -Drelease=true clean dist` target on a fully up-to-date checkout with no modifications. Commit generated files in dist.
-  You will also see differences in the pom-*.xml files and src/.../Native.java.  Do not commit these files.
+* Ensure the git repository is in a clean state (e.g. run `git clean -f -x -d`)
 
-* [Release to Maven Central](PublishingToMavenCentral.md)
+* Update versioned links in `README.md` (search for old version and replace with new version)
 
-* Update links in README.md, commit the changes.
-  * download links
-  * javadoc links
+* Update `CHANGES.md`: remove the `Next release` label and replace it with the final version number. While doing this also check if the version number matches the release: major version should incremented when API incompatible changes are made, minor version should be incremented when features are added, revision should be updated when bugfixes are done.
+
+* Run `ant -Drelease=true -Dmaven-release=true clean dist stage`
+
+* Commit and push generated files in `dist`, `pom-*.xml`, `CHANGES.md`, `README.md` and `src/com/sun/jna/Version.java`.
+
+* Tag
+  * Tag using the new version number (e.g. `git tag 4.2.1`)
+  * Push new tag to origin (`git push --tags`)
 
 * Update Javadoc
-  Check out gh-pages branch, copy latest doc/javadoc into <version>/javadoc,
-  commit and push.
-
-* Tag as &lt;version>, push all changes and new tag to origin.
+  * Check out gh-pages branch
+  * Copy latest doc/javadoc into {version}/javadoc
+  * Commit and push
 
 * Email release notice to [jna-users Google group](http://groups.google.com/group/jna-users).
 
-* Increment the version in build.xml for the next development iteration: increment "jna.revision" in build.xml by one, and create a new section in CHANGES.md for 'Next Release (x.y.z)'. 
+* Increment the version in build.xml for the next development iteration
+  * Increment "jna.revision" in build.xml by one
+  * Create a new section in CHANGES.md for 'Next Release (x.y.z)'
+  * Commit and push
 
-* Commit and push everything.
-
+For more nformation about the maven central release process see:
+[Release to Maven Central](PublishingToMavenCentral.md)

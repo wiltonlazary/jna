@@ -1,26 +1,39 @@
-/* This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+/*
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32;
 
-import java.util.Arrays;
-import java.util.List;
-
+import com.sun.jna.Native;
+import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
-import com.sun.jna.win32.StdCallLibrary;
+import com.sun.jna.Structure.FieldOrder;
+import com.sun.jna.platform.win32.WinDef.DWORD;
+import com.sun.jna.platform.win32.WinDef.HMODULE;
 
 /**
  * Interface for the Tlhelp32.h header file.
  */
-public interface Tlhelp32 extends StdCallLibrary {
+public interface Tlhelp32 {
 
     /**
      * Includes all heaps of the process specified in th32ProcessID in the snapshot. To enumerate the heaps, see
@@ -39,8 +52,20 @@ public interface Tlhelp32 extends StdCallLibrary {
     WinDef.DWORD TH32CS_SNAPTHREAD   = new WinDef.DWORD(0x00000004);
 
     /**
-     * Includes all modules of the process specified in th32ProcessID in the snapshot. To enumerate the modules, see
-     * Module32First. If the function fails with ERROR_BAD_LENGTH, retry the function until it succeeds.
+     *
+     * Used with Kernel32.CreateToolhelp32Snapshot<br>
+     * Includes all modules of the process specified in th32ProcessID in the
+     * snapshot. <br>
+     * To enumerate the modules, see Module32First.<br>
+     * If the function fails with ERROR_BAD_LENGTH, retry the function until it
+     * succeeds. <br>
+     * 64-bit Windows: Using this flag in a 32-bit process includes the 32-bit
+     * modules of the process specified in th32ProcessID, while using it in a
+     * 64-bit process includes the 64-bit modules.<br>
+     * To include the 32-bit modules of the process specified in th32ProcessID
+     * from a 64-bit process, use the TH32CS_SNAPMODULE32 flag.
+     *
+     * @see <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms682489(v=vs.85).aspx">MSDN</a>
      */
     WinDef.DWORD TH32CS_SNAPMODULE   = new WinDef.DWORD(0x00000008);
 
@@ -62,9 +87,14 @@ public interface Tlhelp32 extends StdCallLibrary {
      */
     WinDef.DWORD TH32CS_INHERIT      = new WinDef.DWORD(0x80000000);
 
+    int MAX_MODULE_NAME32 = 255;
+
     /**
      * Describes an entry from a list of the processes residing in the system address space when a snapshot was taken.
      */
+    @FieldOrder({"dwSize", "cntUsage", "th32ProcessID", "th32DefaultHeapID",
+        "th32ModuleID", "cntThreads", "th32ParentProcessID", "pcPriClassBase",
+        "dwFlags", "szExeFile"})
     public static class PROCESSENTRY32 extends Structure {
 
         public static class ByReference extends PROCESSENTRY32 implements Structure.ByReference {
@@ -74,15 +104,6 @@ public interface Tlhelp32 extends StdCallLibrary {
             public ByReference(Pointer memory) {
                 super(memory);
             }
-        }
-
-        public PROCESSENTRY32() {
-            dwSize = new WinDef.DWORD(size());
-        }
-
-        public PROCESSENTRY32(Pointer memory) {
-            super(memory);
-            read();
         }
 
         /**
@@ -138,9 +159,182 @@ public interface Tlhelp32 extends StdCallLibrary {
          * retrieve the full path of the executable file for a 64-bit process.
          */
         public char[] szExeFile = new char[WinDef.MAX_PATH];
-        
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "dwSize", "cntUsage", "th32ProcessID", "th32DefaultHeapID", "th32ModuleID", "cntThreads", "th32ParentProcessID", "pcPriClassBase", "dwFlags", "szExeFile" });
+
+        public PROCESSENTRY32() {
+            dwSize = new WinDef.DWORD(size());
+        }
+
+        public PROCESSENTRY32(Pointer memory) {
+            super(memory);
+            read();
+        }
+    }
+
+    /**
+     * Describes an entry from a list of the threads executing in the system when a
+     * snapshot was taken.
+     */
+    @FieldOrder({ "dwSize", "cntUsage", "th32ThreadID", "th32OwnerProcessID", "tpBasePri", "tpDeltaPri", "dwFlags" })
+    public static class THREADENTRY32 extends Structure {
+
+        public static class ByReference extends THREADENTRY32 implements Structure.ByReference {
+            public ByReference() {
+            }
+
+            public ByReference(Pointer memory) {
+                super(memory);
+            }
+        }
+
+        /**
+         * The size of the structure, in bytes. Before calling the Thread32First
+         * function, set this member to sizeof(THREADENTRY32). If you do not initialize
+         * dwSize, Thread32First fails.
+         */
+        public int dwSize;
+
+        /**
+         * This member is no longer used and is always set to zero.
+         */
+        public int cntUsage;
+
+        /**
+         * The thread identifier, compatible with the thread identifier returned by the
+         * CreateProcess function.
+         */
+        public int th32ThreadID;
+
+        /**
+         * The identifier of the process that created the thread.
+         */
+        public int th32OwnerProcessID;
+
+        /**
+         * The kernel base priority level assigned to the thread. The priority is a
+         * number from 0 to 31, with 0 representing the lowest possible thread priority.
+         * For more information, see KeQueryPriorityThread.
+         */
+        public NativeLong tpBasePri;
+
+        /**
+         * This member is no longer used and is always set to zero.
+         */
+        public NativeLong tpDeltaPri;
+
+        /**
+         * This member is no longer used and is always set to zero.
+         */
+        public int dwFlags;
+
+        public THREADENTRY32() {
+            dwSize = size();
+        }
+
+        public THREADENTRY32(Pointer memory) {
+            super(memory);
+            read();
+        }
+    }
+
+    /**
+     * Describes an entry from a list of the modules belonging to the specified
+     * process.
+     *
+     * @see <a href=
+     *      "https://msdn.microsoft.com/en-us/library/windows/desktop/ms684225(v=vs.85).aspx">MSDN</a>
+     */
+    @FieldOrder({"dwSize", "th32ModuleID", "th32ProcessID", "GlblcntUsage",
+        "ProccntUsage", "modBaseAddr", "modBaseSize", "hModule",
+        "szModule", "szExePath"})
+    public class MODULEENTRY32W extends Structure {
+
+        /**
+         * A representation of a MODULEENTRY32 structure as a reference
+         */
+        public static class ByReference extends MODULEENTRY32W implements Structure.ByReference {
+            public ByReference() {
+            }
+
+            public ByReference(Pointer memory) {
+                super(memory);
+            }
+        }
+
+        /**
+         * The size of the structure, in bytes. Before calling the Module32First
+         * function, set this member to sizeof(MODULEENTRY32). If you do not
+         * initialize dwSize, Module32First fails.
+         */
+        public DWORD dwSize;
+
+        /**
+         * This member is no longer used, and is always set to one.
+         */
+        public DWORD th32ModuleID;
+
+        /**
+         * The identifier of the process whose modules are to be examined.
+         */
+        public DWORD th32ProcessID;
+
+        /**
+         * The load count of the module, which is not generally meaningful, and
+         * usually equal to 0xFFFF.
+         */
+        public DWORD GlblcntUsage;
+
+        /**
+         * The load count of the module (same as GlblcntUsage), which is not
+         * generally meaningful, and usually equal to 0xFFFF.
+         */
+        public DWORD ProccntUsage;
+
+        /**
+         * The base address of the module in the context of the owning process.
+         */
+        public Pointer modBaseAddr;
+
+        /**
+         * The size of the module, in bytes.
+         */
+        public DWORD modBaseSize;
+
+        /**
+         * A handle to the module in the context of the owning process.
+         */
+        public HMODULE hModule;
+
+        /**
+         * The module name.
+         */
+        public char[] szModule = new char[MAX_MODULE_NAME32 + 1];
+
+        /**
+         * The module path.
+         */
+        public char[] szExePath = new char[Kernel32.MAX_PATH];
+
+        public MODULEENTRY32W() {
+            dwSize = new WinDef.DWORD(size());
+        }
+
+        public MODULEENTRY32W(Pointer memory) {
+            super(memory);
+            read();
+        }
+
+        /**
+         * @return The module name.
+         */
+        public String szModule() {
+            return Native.toString(this.szModule);
+        }
+
+        /**
+         * @return The module path.
+         */
+        public String szExePath() {
+            return Native.toString(this.szExePath);
         }
     }
 }

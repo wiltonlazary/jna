@@ -1,36 +1,45 @@
 /* Copyright (c) 2012 Tobias Wolf, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32;
 
-import java.util.Arrays;
 import java.util.List;
 
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
+import com.sun.jna.Structure.FieldOrder;
 import com.sun.jna.platform.win32.Guid.GUID;
 import com.sun.jna.platform.win32.WinDef.LONG;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.platform.win32.WinUser.HDEVNOTIFY;
-import com.sun.jna.win32.StdCallLibrary;
 
 /**
  * Based on dbt.h (various types)
- * 
+ *
  * @author Tobias Wolf, wolf.tobias@gmx.net
  */
-@SuppressWarnings("serial")
-public interface DBT extends StdCallLibrary {
+public interface DBT {
 
     /** The dbt no disk space. */
     int DBT_NO_DISK_SPACE = 0x0047;
@@ -66,30 +75,26 @@ public interface DBT extends StdCallLibrary {
     int DBT_CUSTOMEVENT = 0x8006;
 
     /** The guid devinterface usb device. */
-    public GUID GUID_DEVINTERFACE_USB_DEVICE = new GUID(
+    GUID GUID_DEVINTERFACE_USB_DEVICE = new GUID(
             "{A5DCBF10-6530-11D2-901F-00C04FB951ED}");
 
     /** The guid devinterface hid. */
-    public GUID GUID_DEVINTERFACE_HID = new GUID(
-            "{4D1E55B2-F16F-11CF-88CB-001111000030}");
+    GUID GUID_DEVINTERFACE_HID = new GUID("{4D1E55B2-F16F-11CF-88CB-001111000030}");
 
     /** The guid devinterface volume. */
-    public GUID GUID_DEVINTERFACE_VOLUME = new GUID(
-            "{53F5630D-B6BF-11D0-94F2-00A0C91EFB8B}");
+    GUID GUID_DEVINTERFACE_VOLUME = new GUID("{53F5630D-B6BF-11D0-94F2-00A0C91EFB8B}");
 
     /** The guid devinterface keyboard. */
-    public GUID GUID_DEVINTERFACE_KEYBOARD = new GUID(
-            "{884b96c3-56ef-11d1-bc8c-00a0c91405dd}");
+    GUID GUID_DEVINTERFACE_KEYBOARD = new GUID("{884b96c3-56ef-11d1-bc8c-00a0c91405dd}");
 
     /** The guid devinterface mouse. */
-    public GUID GUID_DEVINTERFACE_MOUSE = new GUID(
-            "{378DE44C-56EF-11D1-BC8C-00A0C91405DD}");
+    GUID GUID_DEVINTERFACE_MOUSE = new GUID("{378DE44C-56EF-11D1-BC8C-00A0C91405DD}");
 
     /**
      * The Class DEV_BROADCAST_HDR.
      */
+    @FieldOrder({"dbch_size", "dbch_devicetype", "dbch_reserved"})
     public class DEV_BROADCAST_HDR extends Structure {
-
         /** The dbch_size. */
         public int dbch_size = size();
 
@@ -103,11 +108,12 @@ public interface DBT extends StdCallLibrary {
          * Instantiates a new dev broadcast hdr.
          */
         public DEV_BROADCAST_HDR() {
+            super();
         }
 
         /**
          * Instantiates a new dev broadcast hdr.
-         * 
+         *
          * @param pointer
          *            the pointer
          */
@@ -117,23 +123,13 @@ public interface DBT extends StdCallLibrary {
 
         /**
          * Instantiates a new dev broadcast hdr.
-         * 
+         *
          * @param memory
          *            the memory
          */
         public DEV_BROADCAST_HDR(Pointer memory) {
             super(memory);
             read();
-        }
-
-        /*
-         * (non-Javadoc)
-         * 
-         * @see com.sun.jna.Structure#getFieldOrder()
-         */
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "dbch_size", "dbch_devicetype",
-                    "dbch_reserved" });
         }
     }
 
@@ -161,8 +157,8 @@ public interface DBT extends StdCallLibrary {
     /**
      * The Class DEV_BROADCAST_OEM.
      */
+    @FieldOrder({"dbco_size", "dbco_devicetype", "dbco_reserved", "dbco_identifier", "dbco_suppfunc"})
     public class DEV_BROADCAST_OEM extends Structure {
-
         /** The dbco_size. */
         public int dbco_size = size();
 
@@ -182,12 +178,12 @@ public interface DBT extends StdCallLibrary {
          * Instantiates a new dev broadcast oem.
          */
         public DEV_BROADCAST_OEM() {
-            // TODO Auto-generated constructor stub
+            super();
         }
 
         /**
          * Instantiates a new dev broadcast oem.
-         * 
+         *
          * @param memory
          *            the memory
          */
@@ -195,23 +191,13 @@ public interface DBT extends StdCallLibrary {
             super(memory);
             read();
         }
-
-        /*
-         * (non-Javadoc)
-         * 
-         * @see com.sun.jna.Structure#getFieldOrder()
-         */
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "dbco_size", "dbco_devicetype",
-                    "dbco_reserved", "dbco_identifier", "dbco_suppfunc" });
-        }
     }
 
     /**
      * The Class DEV_BROADCAST_DEVNODE.
      */
+    @FieldOrder({"dbcd_size", "dbcd_devicetype", "dbcd_reserved", "dbcd_devnode"})
     public class DEV_BROADCAST_DEVNODE extends Structure {
-
         /** The dbcd_size. */
         public int dbcd_size = size();
 
@@ -228,12 +214,12 @@ public interface DBT extends StdCallLibrary {
          * Instantiates a new dev broadcast devnode.
          */
         public DEV_BROADCAST_DEVNODE() {
-            // TODO Auto-generated constructor stub
+            super();
         }
 
         /**
          * Instantiates a new dev broadcast devnode.
-         * 
+         *
          * @param memory
          *            the memory
          */
@@ -241,23 +227,13 @@ public interface DBT extends StdCallLibrary {
             super(memory);
             read();
         }
-
-        /*
-         * (non-Javadoc)
-         * 
-         * @see com.sun.jna.Structure#getFieldOrder()
-         */
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "dbcd_size", "dbcd_devicetype",
-                    "dbcd_reserved", "dbcd_devnode" });
-        }
     }
 
     /**
      * The Class DEV_BROADCAST_VOLUME.
      */
+    @FieldOrder({"dbcv_size", "dbcv_devicetype", "dbcv_reserved", "dbcv_unitmask", "dbcv_flags"})
     public class DEV_BROADCAST_VOLUME extends Structure {
-
         /** The dbcv_size. */
         public int dbcv_size = size();
 
@@ -277,28 +253,18 @@ public interface DBT extends StdCallLibrary {
          * Instantiates a new dev broadcast volume.
          */
         public DEV_BROADCAST_VOLUME() {
-            // TODO Auto-generated constructor stub
+            super();
         }
 
         /**
          * Instantiates a new dev broadcast volume.
-         * 
+         *
          * @param memory
          *            the memory
          */
         public DEV_BROADCAST_VOLUME(Pointer memory) {
             super(memory);
             read();
-        }
-
-        /*
-         * (non-Javadoc)
-         * 
-         * @see com.sun.jna.Structure#getFieldOrder()
-         */
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "dbcv_size", "dbcv_devicetype",
-                    "dbcv_reserved", "dbcv_unitmask", "dbcv_flags" });
         }
     }
 
@@ -311,8 +277,8 @@ public interface DBT extends StdCallLibrary {
     /**
      * The Class DEV_BROADCAST_PORT.
      */
+    @FieldOrder({"dbcp_size", "dbcp_devicetype", "dbcp_reserved", "dbcp_name"})
     public class DEV_BROADCAST_PORT extends Structure {
-
         /** The dbcp_size. */
         public int dbcp_size = size();
 
@@ -329,12 +295,12 @@ public interface DBT extends StdCallLibrary {
          * Instantiates a new dev broadcast port.
          */
         public DEV_BROADCAST_PORT() {
-            // TODO Auto-generated constructor stub
+            super();
         }
 
         /**
          * Instantiates a new dev broadcast port.
-         * 
+         *
          * @param memory
          *            the memory
          */
@@ -342,23 +308,14 @@ public interface DBT extends StdCallLibrary {
             super(memory);
             read();
         }
-
-        /*
-         * (non-Javadoc)
-         * 
-         * @see com.sun.jna.Structure#getFieldOrder()
-         */
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "dbcp_size", "dbcp_devicetype",
-                    "dbcp_reserved", "dbcp_name" });
-        }
     }
 
     /**
      * The Class DEV_BROADCAST_NET.
      */
+    @FieldOrder({"dbcn_size", "dbcn_devicetype",
+                "dbcn_reserved", "dbcn_resource", "dbcn_flags"})
     public class DEV_BROADCAST_NET extends Structure {
-
         /** The dbcn_size. */
         public int dbcn_size = size();
 
@@ -378,12 +335,12 @@ public interface DBT extends StdCallLibrary {
          * Instantiates a new dev broadcast net.
          */
         public DEV_BROADCAST_NET() {
-            // TODO Auto-generated constructor stub
+            super();
         }
 
         /**
          * Instantiates a new dev broadcast net.
-         * 
+         *
          * @param memory
          *            the memory
          */
@@ -391,23 +348,14 @@ public interface DBT extends StdCallLibrary {
             super(memory);
             read();
         }
-
-        /*
-         * (non-Javadoc)
-         * 
-         * @see com.sun.jna.Structure#getFieldOrder()
-         */
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "dbcn_size", "dbcn_devicetype",
-                    "dbcn_reserved", "dbcn_resource", "dbcn_flags" });
-        }
     }
 
     /**
      * The Class DEV_BROADCAST_DEVICEINTERFACE.
      */
+    @FieldOrder({"dbcc_size", "dbcc_devicetype",
+        "dbcc_reserved", "dbcc_classguid", "dbcc_name"})
     public class DEV_BROADCAST_DEVICEINTERFACE extends Structure {
-
         /** The dbcc_size. */
         public int dbcc_size;
 
@@ -427,12 +375,12 @@ public interface DBT extends StdCallLibrary {
          * Instantiates a new dev broadcast deviceinterface.
          */
         public DEV_BROADCAST_DEVICEINTERFACE() {
-            // TODO Auto-generated constructor stub
+            super();
         }
 
         /**
          * Dev broadcast hdr.
-         * 
+         *
          * @param pointer
          *            the pointer
          */
@@ -442,7 +390,7 @@ public interface DBT extends StdCallLibrary {
 
         /**
          * Instantiates a new dev broadcast deviceinterface.
-         * 
+         *
          * @param memory
          *            the memory
          */
@@ -457,29 +405,20 @@ public interface DBT extends StdCallLibrary {
 
         /**
          * Gets the dbcc_name.
-         * 
+         *
          * @return the dbcc_name
          */
         public String getDbcc_name() {
             return Native.toString(this.dbcc_name);
-        }
-
-        /*
-         * (non-Javadoc)
-         * 
-         * @see com.sun.jna.Structure#getFieldOrder()
-         */
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "dbcc_size", "dbcc_devicetype",
-                    "dbcc_reserved", "dbcc_classguid", "dbcc_name" });
         }
     }
 
     /**
      * The Class DEV_BROADCAST_HANDLE.
      */
+    @FieldOrder({"dbch_size", "dbch_devicetype", "dbch_reserved", "dbch_handle",
+        "dbch_hdevnotify", "dbch_eventguid", "dbch_nameoffset", "dbch_data"})
     public class DEV_BROADCAST_HANDLE extends Structure {
-
         /** The dbch_size. */
         public int dbch_size = size();
 
@@ -508,29 +447,18 @@ public interface DBT extends StdCallLibrary {
          * Instantiates a new dev broadcast handle.
          */
         public DEV_BROADCAST_HANDLE() {
-            // TODO Auto-generated constructor stub
+            super();
         }
 
         /**
          * Instantiates a new dev broadcast handle.
-         * 
+         *
          * @param memory
          *            the memory
          */
         public DEV_BROADCAST_HANDLE(Pointer memory) {
             super(memory);
             read();
-        }
-
-        /*
-         * (non-Javadoc)
-         * 
-         * @see com.sun.jna.Structure#getFieldOrder()
-         */
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "dbch_size", "dbch_devicetype",
-                    "dbch_reserved", "dbch_handle", "dbch_hdevnotify",
-                    "dbch_eventguid", "dbch_nameoffset", "dbch_data" });
         }
     }
 }

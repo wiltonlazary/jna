@@ -4,10 +4,11 @@ Contributing to JNA
 JNA contains work from many developers. You're encouraged to contribute to both JNA's core `jna.jar` as well as platform-specific `platform.jar` libraries.
 
 - Install Git and configure it to work with Github
-- Fork the code from [github.com/twall/jna](https://github.com/twall/jna)
+- Fork the code from [github.com/java-native-access/jna](https://github.com/java-native-access/jna)
 - Check out the code with `git clone git@github.com:username/jna.git`
-- Ensure you can build the project with `ant dist test`
+- Ensure you can build the project with `ant dist test test-platform`
 - Make your code changes, write tests, build
+- Add entry to CHANGES.md describing the change
 - Submit pull requests, forks and/or topical branches are encouraged.
 
 Build Environment
@@ -17,7 +18,8 @@ gcc, autotools (for libffi), ant (1.8+), a JDK (1.4+), and a few other typical
 command-line utilities available.  Feel free to report any issues, we'll
 generally pull build fixes immediately. 
 
-Native bits are built by passing `-Dskip-native=false` to `ant`.  It's
+Native bits are built by invoking `ant native`.  The build system is configured
+to rebuild the native library automaticly if necessary. It's
 safe to skip the native build as long as your modifications are restricted to
 Java code.
 
@@ -27,15 +29,15 @@ For debian-style installs,
 
 For most unix-like systems:
 
-    % git clone git@github.com:twall/jna
-    % ant dist test
+    % git clone git@github.com:java-native-access/jna
+    % ant dist test test-platform
 
 For Windows, see [Windows Development Environment](WindowsDevelopmentEnvironment.md).
 
 For windows CE/Mobile 6.x, you'll need cegcc (http://gitorious.org/cegcc) for
 cross-compiling and a JavaME implementation (phoneME (http://davy.preuveneers.be/phoneme) works well).
 
-For Android, see [Android Development Environment)(AndroidDevelopmentEnvironment.md).
+For Android, see [Android Development Environment](AndroidDevelopmentEnvironment.md).
 
 Required Testing
 ================
@@ -47,19 +49,31 @@ If you're struggling with a mapping test, consider that it's not really necessar
 Copyright Headers in Files
 ==========================
 
-If you're creating a new file, add a copyright notice and an LGPL license notice with your name or company on top of it.
+If you're creating a new file, add a copyright notice and an LGPL 2.1 and AL2.0
+license notice with your name or company on top of it.
 
       /* Copyright (c) 2011 Timothy Wall, All Rights Reserved
        * 
-       * This library is free software; you can redistribute it and/or
-       * modify it under the terms of the GNU Lesser General Public
-       * License as published by the Free Software Foundation; either
-       * version 2.1 of the License, or (at your option) any later version.
+       * The contents of this file is dual-licensed under 2 
+       * alternative Open Source/Free licenses: LGPL 2.1 or later and 
+       * Apache License 2.0. (starting with JNA version 4.0.0).
        * 
-       * This library is distributed in the hope that it will be useful,
-       * but WITHOUT ANY WARRANTY; without even the implied warranty of
-       * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-       * Lesser General Public License for more details.  
+       * You can freely decide which license you want to apply to 
+       * the project.
+       * 
+       * You may obtain a copy of the LGPL License at:
+       * 
+       * http://www.gnu.org/licenses/licenses.html
+       * 
+       * A copy is also included in the downloadable source code package
+       * containing JNA, in file "LGPL2.1".
+       * 
+       * You may obtain a copy of the Apache License at:
+       * 
+       * http://www.apache.org/licenses/
+       * 
+       * A copy is also included in the downloadable source code package
+       * containing JNA, in file "AL2.0".
        */
 
 If you're adding to an existing file, don't make any changes to the copyright.
@@ -82,7 +96,7 @@ DLL functions are mapped into Unicode interfaces of the same name, like this
    * @author dblock[at]dblock.org
    */
   public interface Advapi32 extends StdCallLibrary {
-    Advapi32 INSTANCE = (Advapi32) Native.loadLibrary("Advapi32", 
+    Advapi32 INSTANCE = (Advapi32) Native.load("Advapi32", 
       Advapi32.class, W32APIOptions.UNICODE_OPTIONS);
 
     // function definitions go here
@@ -120,7 +134,7 @@ Utilities that wrap Win32 functions into more user-friendly implementations are 
 Javadoc Pages
 =============
 
-Javadoc pages are published with [gh-pages](http://pages.github.com/) to a root branch. The official repository for JNA is [here](http://twall.github.com/jna). Here's how to pull and push the root branch to your local environment.
+Javadoc pages are published with [gh-pages](http://pages.github.com/) to a root branch. The official repository for JNA is [here](https://github.com/java-native-access/jna). The pages are located in the gh-pages branch. Here's how to pull and push the root branch to your local environment.
 
 ``` sh
 git fetch origin

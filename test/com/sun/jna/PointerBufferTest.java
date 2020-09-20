@@ -1,14 +1,25 @@
 /* Copyright (c) 2007 Wayne Meissner, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * <p/>
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 
 package com.sun.jna;
@@ -19,17 +30,11 @@ import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Map.Entry;
-
 import junit.framework.TestCase;
 
 
 public class PointerBufferTest extends TestCase {
-    
+
     private static final String UNICODE = "[\u0444]";
 
     public void testByteBufferPutString() throws Exception {
@@ -38,7 +43,7 @@ public class PointerBufferTest extends TestCase {
         Memory m = new Memory(1024);
         ByteBuffer buf = m.getByteBuffer(0, m.size()).order(ByteOrder.nativeOrder());
         buf.put(MAGIC.getBytes(ENCODING)).put((byte) 0).flip();
-        assertEquals("String not written to memory", MAGIC, 
+        assertEquals("String not written to memory", MAGIC,
                      m.getString(0, ENCODING));
     }
     public void testByteBufferPutByte() {
@@ -46,7 +51,7 @@ public class PointerBufferTest extends TestCase {
         Memory m = new Memory(8);
         ByteBuffer buf = m.getByteBuffer(0, m.size()).order(ByteOrder.nativeOrder());
         buf.put(MAGIC).flip();
-        assertEquals("Byte not written to memory", MAGIC, 
+        assertEquals("Byte not written to memory", MAGIC,
                 m.getByte(0));
     }
     public void testByteBufferPutInt() {
@@ -54,7 +59,7 @@ public class PointerBufferTest extends TestCase {
         Memory m = new Memory(8);
         ByteBuffer buf = m.getByteBuffer(0, m.size()).order(ByteOrder.nativeOrder());
         buf.putInt(MAGIC).flip();
-        assertEquals("Int not written to memory", MAGIC, 
+        assertEquals("Int not written to memory", MAGIC,
                 m.getInt(0));
     }
     public void testByteBufferPutLong() {
@@ -62,7 +67,7 @@ public class PointerBufferTest extends TestCase {
         Memory m = new Memory(8);
         ByteBuffer buf = m.getByteBuffer(0, m.size()).order(ByteOrder.nativeOrder());
         buf.putLong(MAGIC).flip();
-        assertEquals("Long not written to memory", MAGIC, 
+        assertEquals("Long not written to memory", MAGIC,
                 m.getLong(0));
     }
     public void testByteBufferGetByte() {
@@ -70,7 +75,7 @@ public class PointerBufferTest extends TestCase {
         Memory m = new Memory(8);
         ByteBuffer buf = m.getByteBuffer(0, m.size()).order(ByteOrder.nativeOrder());
         m.setByte(0, MAGIC);
-        assertEquals("Byte not read from memory", MAGIC, 
+        assertEquals("Byte not read from memory", MAGIC,
                 buf.get(0));
     }
     public void testByteBufferGetInt() {
@@ -78,7 +83,7 @@ public class PointerBufferTest extends TestCase {
         Memory m = new Memory(8);
         ByteBuffer buf = m.getByteBuffer(0, m.size()).order(ByteOrder.nativeOrder());
         m.setInt(0, MAGIC);
-        assertEquals("Int not read from memory", MAGIC, 
+        assertEquals("Int not read from memory", MAGIC,
                 buf.getInt(0));
     }
     public void testByteBufferGetLong() {
@@ -86,7 +91,7 @@ public class PointerBufferTest extends TestCase {
         Memory m = new Memory(8);
         ByteBuffer buf = m.getByteBuffer(0, m.size()).order(ByteOrder.nativeOrder());
         m.setLong(0, MAGIC);
-        assertEquals("Long not read from memory", MAGIC, 
+        assertEquals("Long not read from memory", MAGIC,
                 buf.getLong(0));
     }
     public void testIntBufferPut() {
@@ -95,7 +100,7 @@ public class PointerBufferTest extends TestCase {
         ByteBuffer buf = m.getByteBuffer(0, m.size()).order(ByteOrder.nativeOrder());
         IntBuffer ib = buf.asIntBuffer();
         ib.put(MAGIC).flip();
-        assertEquals("Int not written to memory", MAGIC, 
+        assertEquals("Int not written to memory", MAGIC,
                 m.getInt(0));
     }
     public void testLongBufferPut() {
@@ -104,7 +109,7 @@ public class PointerBufferTest extends TestCase {
         ByteBuffer buf = m.getByteBuffer(0, m.size()).order(ByteOrder.nativeOrder());
         LongBuffer lb = buf.asLongBuffer();
         lb.put(MAGIC).flip();
-        assertEquals("Long not written to memory", MAGIC, 
+        assertEquals("Long not written to memory", MAGIC,
                 m.getLong(0));
     }
     public void testFloatBufferPut() {
@@ -129,7 +134,7 @@ public class PointerBufferTest extends TestCase {
         ByteBuffer buf = m.getByteBuffer(0, m.size()).order(ByteOrder.nativeOrder());
         IntBuffer ib = buf.asIntBuffer();
         m.setInt(0, MAGIC);
-        assertEquals("Int not read from memory", MAGIC, 
+        assertEquals("Int not read from memory", MAGIC,
                 ib.get(0));
     }
     public void testLongBufferGet() {
@@ -138,7 +143,7 @@ public class PointerBufferTest extends TestCase {
         ByteBuffer buf = m.getByteBuffer(0, m.size()).order(ByteOrder.nativeOrder());
         LongBuffer lb = buf.asLongBuffer();
         m.setLong(0, MAGIC);
-        assertEquals("Long not read from memory", MAGIC, 
+        assertEquals("Long not read from memory", MAGIC,
                 lb.get(0));
     }
     public void testFloatBufferGet() {
@@ -160,17 +165,17 @@ public class PointerBufferTest extends TestCase {
     public void testDirectBufferPointer() throws Exception {
         Pointer p = new Memory(1024);
         ByteBuffer b = p.getByteBuffer(0, 1024);
-        assertEquals("ByteBuffer Pointer does not match", 
+        assertEquals("ByteBuffer Pointer does not match",
                      p, Native.getDirectBufferPointer(b));
-        assertEquals("ShortBuffer Pointer does not match", 
+        assertEquals("ShortBuffer Pointer does not match",
                      p, Native.getDirectBufferPointer(b.asShortBuffer()));
-        assertEquals("IntBuffer Pointer does not match", 
+        assertEquals("IntBuffer Pointer does not match",
                      p, Native.getDirectBufferPointer(b.asIntBuffer()));
-        assertEquals("LongBuffer Pointer does not match", 
+        assertEquals("LongBuffer Pointer does not match",
                      p, Native.getDirectBufferPointer(b.asLongBuffer()));
-        assertEquals("FloatBuffer Pointer does not match", 
+        assertEquals("FloatBuffer Pointer does not match",
                      p, Native.getDirectBufferPointer(b.asFloatBuffer()));
-        assertEquals("DoubleBuffer Pointer does not match", 
+        assertEquals("DoubleBuffer Pointer does not match",
                      p, Native.getDirectBufferPointer(b.asDoubleBuffer()));
 
         assertEquals("Wrong direct buffer address",

@@ -5,18 +5,17 @@
   Copyright 2007 Timothy Wall
 -->
 </head>
-
+<body bgcolor="white">
 <HR>
 <CENTER>
 <H1>Java Native Access</H1>
 </CENTER>
-<body bgcolor="white">
 This document is the API specification for the
-<a href=http://github.com/twall/jna>JNA</a>
+<a href="https://github.com/java-native-access/jna">JNA</a>
 library for simplified native library access for Java.
 <p>
 <a href=#navbar_top>Top</a>&nbsp;
-<a href=http://github.com/twall/jna>JNA Home</a>&nbsp;
+<a href="https://github.com/java-native-access/jna">JNA Home</a>&nbsp;
 <a href=index.html target=_top>API w/FRAMES</a>&nbsp;
 <p>
 
@@ -60,19 +59,19 @@ additional JNI or native code.
 JNA includes a small, platform-specific shared library which enables all
 native access.  When the {@link com.sun.jna.Native} class is first accessed,
 JNA will first attempt to load this library from the directories specified
-in <code>jna.boot.library.path</code>.  If that fails, it will fall back to
-loading from the system library paths. Finally it will attempt to extract the
-stub library from from the JNA jar file, and load it. 
+in <code>jna.boot.library.path</code>. If that fails and <code>jna.nosys=false</code>
+is set, it will fall back to loading from the system library paths. Finally it
+will attempt to extract the stub library from from the JNA jar file, and load it.
 <p/>
 The <code>jna.boot.library.path</code> property is mainly to support
 jna.jar being included in -Xbootclasspath, where
 <code>java.library.path</code> and LD_LIBRARY_PATH are ignored.  It is also
 useful for designating a version of the library to use in preference to any
-which may already be installed on the system.  
+which may already be installed on the system.
 <p/>
-Loading from the system may be disabled by <code>jna.nosys=true</code>,
+Loading from the system may be enabled by <code>jna.nosys=false</code>,
 and unpacking from the jar file may be disabled by
-<code>jna.nounpack=true</code>. 
+<code>jna.nounpack=true</code>.
 <p/>
 The library name used to search for JNA's native library may be altered
 by setting <code>jna.boot.library.name</code>, which defaults to
@@ -92,10 +91,12 @@ following:<br>
 <blockquote><code><pre>
 // Alternative 1: interface-mapped class, dynamically load the C library
 public interface CLibrary extends Library {
-    CLibrary INSTANCE = (CLibrary)Native.loadLibrary("c", CLibrary.class);
+    CLibrary INSTANCE = (CLibrary)Native.load("c", CLibrary.class);
 }
 
-// Alternative 2: direct-mapped class
+// Alternative 2: direct-mapped class (uses a concrete class rather than an
+// interface, with a slight variation in <a href="#direct-mapping">method
+// declarations</a>). 
 public class CLibrary {
     static {
         Native.register("c");
@@ -103,7 +104,7 @@ public class CLibrary {
 }
 </pre></code></blockquote>
 The <code>String</code> passed to the
-{@link com.sun.jna.Native#loadLibrary(String,Class)}
+{@link com.sun.jna.Native#load(String,Class)}
 (or {@link com.sun.jna.NativeLibrary#getInstance(String)}) method
 is the undecorated name of the shared library file.  Here are some examples of
 library name mappings.<p>  
@@ -113,7 +114,7 @@ td { padding-left: 10px; padding-right: 10px; }
 blockquote { background-color:#EAEAEA; }
 </style>
 <table border=1 borderColor=white class=styled>
-<tr><td><b>OS</b></td><td><b>Library Name</b></td><td><b>String</b></td></tr>
+<tr><th><b>OS</b></th><th><b>Library Name</b></th><th><b>String</b></th></tr>
 <tr><td>Windows</td><td>user32.dll</td><td>user32</td></tr>
 <tr><td>Linux</td><td>libX11.so</td><td>X11</td></tr>
 <tr><td>Mac OS X</td><td>libm.dylib</td><td>m</td></tr>
@@ -143,14 +144,16 @@ public interface CLibrary extends Library {
     int atol(String s);
 }
 </pre></code></blockquote>
-Alternatively, you can map directly to a declared native method:<br>
+<a name="direct-mapping"></a>
+Alternatively, you can map directly to a declared native method 
+(with <a href="https://github.com/java-native-access/jna/blob/master/www/DirectMapping.md">some restrictions</a>):<br>
 <blockquote><code><pre>
 public class CLibrary {
     public static native int atol(String s);
 }
 </pre></code></blockquote>
 
-If you prefer to rename the Java methods to conform to Java coding conventions, then you can provide an entry ({@link com.sun.jna.Library#OPTION_FUNCTION_MAPPER}/{@link com.sun.jna.FunctionMapper}) in the options {@link java.util.Map} passed to {@link com.sun.jna.Native#loadLibrary(String,Class,java.util.Map) Native.loadLibrary()} which maps the Java names to the native names.  While this keeps your Java code a little cleaner, the additional mapping of names may make it a little less obvious the native functions being called.<p>
+If you prefer to rename the Java methods to conform to Java coding conventions, then you can provide an entry ({@link com.sun.jna.Library#OPTION_FUNCTION_MAPPER}/{@link com.sun.jna.FunctionMapper}) in the options {@link java.util.Map} passed to {@link com.sun.jna.Native#load(String,Class,java.util.Map) Native.load()} which maps the Java names to the native names.  While this keeps your Java code a little cleaner, the additional mapping of names may make it a little less obvious the native functions being called.<p>
 An instance of the {@link com.sun.jna.Function} class is obtained through the {@link com.sun.jna.NativeLibrary} instance corresponding to the containing native library.  This {@link com.sun.jna.Function} instance handles argument marshalling and delegation to the native function. 
 
 <p>
@@ -160,7 +163,7 @@ An instance of the {@link com.sun.jna.Function} class is obtained through the {@
 Java types must be chosen to match native types of the same size.  Following are the types supported by the JNA library.<p>
 <center>
 <table border=1 borderColor=white class=styled width="100%">
-<tr><td><b>C Type</b></td><td><b>Native Representation</b></td><td><b>Java Type</b></td></tr>
+<tr><th><b>C Type</b></th><th><b>Native Representation</b></th><td><b>Java Type</b></th></tr>
 <tr><td>char</td><td>8-bit integer</td><td>byte</td></tr>
 <tr><td>wchar_t</td><td>platform-dependent</td><td>char</td></tr>
 <tr><td>short</td><td>16-bit integer</td><td>short</td></tr>
@@ -197,9 +200,9 @@ Java types must be chosen to match native types of the same size.  Following are
 <li>Java arrays of primitive type may be wrapped by {@link java.nio.Buffer} in
   order to access a subset of the array (changing the effective size and/or
   offest).
-<li>Java arrays of primitive type are only valid for use within the scope of a
+<li>Java arrays of primitive type and non-direct {@link java.nio.Buffer}s are only valid for use within the scope of a
   single call.  If the native code keeps a reference to the memory, use {@link
-  com.sun.jna.Memory} or {@link java.nio.Buffer} instead.
+  com.sun.jna.Memory} or direct {@link java.nio.ByteBuffer}s instead.
 <li>Primitive arrays and structures as members of a structure are overlaid on the parent structure memory.  
 <li>Bitfields must be manually packed into an integer type.  
 <li>All other types must eventually be converted to one of the types in the this table.  Methods with arguments or return values of types other than these must either use types deriving from {@link com.sun.jna.NativeMapped} or supply type conversion information for the unsupported types.  
@@ -220,8 +223,8 @@ To map a native multi-dimensional array, use a single-dimensional Java array wit
 int array[DIM0][DIM1];
 int i,j;
 
-for (i=0;i < DIM0;i++) {
-  for (j=0;j < DIM1;j++) {
+for (i=0;i &lt; DIM0;i++) {
+  for (j=0;j &lt; DIM1;j++) {
     array[i][j] = i*DIM1 + j;
   }
 }
@@ -230,8 +233,8 @@ for (i=0;i < DIM0;i++) {
 final int DIM0 = 2;
 final int DIM1 = 3;
 int[] array = new int[6];
-for (int i=0;i < DIM0;i++) {
-  for (int j=0;j < DIM1;j++) {
+for (int i=0;i &lt; DIM0;i++) {
+  for (int j=0;j &lt; DIM1;j++) {
     array[i*DIM1 + j] = i*DIM1 + j;                   
   }                   
 }
@@ -277,10 +280,14 @@ The {@link com.sun.jna.WString} class is used to identify wide character strings
 
 <a name="buffers"></a>
 <h3>Buffers/Memory Blocks</h3>
-Use arrays to represent buffers of primitive types passed to a function for use only during the function invocation.  A native method cannot return a Java array, since there is no canonical way to indicate the intended length of the returned array.  Instead, use one of the array access methods in the Pointer class, supplying the length of the returned array.<p>
+Use arrays to represent buffers of primitive types passed to a function for use only during the function invocation.  If the native code
+keeps a pointer to the memory after the native function returns, use direct {@link java.nio.ByteBuffer}s or {@link com.sun.jna.Memory} instead.
+<p>A native method cannot return a Java array, since there is no canonical way to indicate the intended length of the returned array.
+Instead, use one of the array access methods in the Pointer class, supplying the length of the returned array.<p>
 {@link java.nio.Buffer}s may also be used as a memory buffer input
 argument; direct byte buffers can often provide much improved performance over
-primitive arrays.  A pointer provided by native code may be converted to a {@link java.nio.Buffer} by calling {@link com.sun.jna.Pointer#getByteBuffer}.
+primitive arrays.
+A pointer provided by native code may be converted to a {@link java.nio.Buffer} by calling {@link com.sun.jna.Pointer#getByteBuffer}.
 <p>
 If you need to pass in a subset of a primitive array, you can do so by
 wrapping it in a {@link java.nio.Buffer} subclass, such as {@link
@@ -384,6 +391,8 @@ interface CLibrary extends Library {
     int printf(String fmt, ...);
 }
 </pre></code></blockquote>
+
+<em>Varargs are not supported when using <a href="https://github.com/java-native-access/jna/blob/master/www/DirectMapping.md">Direct mapping</a>.</em>
 
 <a name="structures"></a>
 <h3>Structures</h3>
@@ -677,7 +686,12 @@ initialized unless they are selected via {@link com.sun.jna.Union#setType}.
 <a name="last-error"></a>
 <h3>Obtaining "last" error</h3>
 If a function sets the system error property
-(<code><a href="http://www.opengroup.org/onlinepubs/009695399/functions/errno.html">errno</a></code> or <code><a href="http://msdn.microsoft.com/en-us/library/ms679360(VS.85).aspx">GetLastError()</a></code>), the error code will be thrown as a {@link com.sun.jna.LastErrorException} if you declare the exception in your JNA mapping.  Alternatively, you can use {@link com.sun.jna.Native#getLastError()} to retrieve it, providing that {@link com.sun.jna.Native#setPreserveLastError(boolean)} has been called with a <code>true</code> value.  Throwing an exception is preferred since it has better performance.
+(<code><a href="http://www.opengroup.org/onlinepubs/009695399/functions/errno.html">errno</a></code> or 
+<code><a href="http://msdn.microsoft.com/en-us/library/ms679360(VS.85).aspx">GetLastError()</a></code>), 
+the error code will be thrown as a {@link com.sun.jna.LastErrorException} if you 
+declare the exception in your JNA mapping. Alternatively, you can use 
+{@link com.sun.jna.Native#getLastError()} to retrieve it. Throwing an exception
+is preferred since it has better performance.
 
 <a name="java-objects"></a>
 <h3>Arbitrary Java Object arguments/return values</h3>
@@ -704,7 +718,7 @@ The method {@link com.sun.jna.NativeLibrary#getGlobalVariableAddress} may be use
 <a href="#toc">Table of Contents</a>
 <a name="crash-protection"></a>
 <h2>VM Crash Protection</h2>
-It is not uncommon when defining a new library and writing tests to encounter memory access errors which crash the VM.  These are often caused by improper mappings or invalid arguments passed to the native library.  To generate Java errors instead of crashing the VM, call {@link com.sun.jna.Native#setProtected Native.setProtected(true)}</code>.  Not all platforms support this protection; if not, the value of {@link com.sun.jna.Native#isProtected} will remain <code>false</code>.<p>
+It is not uncommon when defining a new library and writing tests to encounter memory access errors which crash the VM.  These are often caused by improper mappings or invalid arguments passed to the native library.  To generate Java errors instead of crashing the VM, call <code>{@link com.sun.jna.Native#setProtected Native.setProtected(true)}</code>.  Not all platforms support this protection; if not, the value of {@link com.sun.jna.Native#isProtected} will remain <code>false</code>.<p>
 NOTE: When protected mode is enabled, you should make use of the jsig library, if available (see <a href="http://download.oracle.com/javase/6/docs/technotes/guides/vm/signal-chaining.html">Signal Chaining</a>) to avoid interfering with the JVM's use of signals.  In short, set the environment variable <code>LD_PRELOAD</code> (or <code>LD_PRELOAD_64</code>) to the path to <code>libjsig.so</code> in your JRE lib directory (usually ${java.home}/lib/${os.arch}/libjsig.so) before launching your Java application.
  
 
@@ -737,10 +751,6 @@ and {@link com.sun.jna.Structure#writeField(String)} or {@link
 com.sun.jna.Structure#writeField(String,Object)} to synch with just the fields
 of interest. 
 <h3>Throw exceptions on last error</h3>
-To avoid the overhead of preserving the system last error information on every
-native call, invoke
-{@link com.sun.jna.Native#setPreserveLastError setPreserveLastError(false)} or
-set the System property <code>jna.preserve_last_error=false</code>.<p/>
 In those methods where you are interested in the value of errno/GetLastError(),
 declare your method to throw {@link com.sun.jna.LastErrorException}.
 </body>

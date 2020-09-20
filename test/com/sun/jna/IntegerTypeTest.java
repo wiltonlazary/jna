@@ -1,3 +1,25 @@
+/*
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
+ */
 package com.sun.jna;
 
 import java.util.Arrays;
@@ -8,6 +30,7 @@ import junit.framework.TestCase;
 public class IntegerTypeTest extends TestCase {
 
     public static class Sized extends IntegerType {
+        private static final long serialVersionUID = 1L;
         public Sized() { this(4, 0); }
         public Sized(int size, long value) { super(size, value); }
     }
@@ -15,8 +38,9 @@ public class IntegerTypeTest extends TestCase {
     public void testWriteNull() {
         class NTStruct extends Structure {
             public Sized field;
-            protected List getFieldOrder() {
-                return Arrays.asList(new String[] { "field" });
+            @Override
+            protected List<String> getFieldOrder() {
+                return Arrays.asList("field");
             }
         }
         NTStruct s = new NTStruct();
@@ -25,8 +49,9 @@ public class IntegerTypeTest extends TestCase {
     public void testReadNull() {
         class NTStruct extends Structure {
             public Sized field;
-            protected List getFieldOrder() {
-                return Arrays.asList(new String[] { "field" });
+            @Override
+            protected List<String> getFieldOrder() {
+                return Arrays.asList("field");
             }
         }
         NTStruct s = new NTStruct();
@@ -67,7 +92,7 @@ public class IntegerTypeTest extends TestCase {
             }
         }
     }
-	
+
     public void testInitialValue() {
         long VALUE = 20;
         NativeLong nl = new NativeLong(VALUE);
@@ -76,6 +101,8 @@ public class IntegerTypeTest extends TestCase {
 
     public void testValueBoundaries() {
         class TestType extends IntegerType {
+            private static final long serialVersionUID = 1L;
+
             public TestType(int size, long value) {
                 super(size, value);
             }
@@ -102,6 +129,8 @@ public class IntegerTypeTest extends TestCase {
 
     public void testUnsignedValues() {
         class TestType extends IntegerType {
+            private static final long serialVersionUID = 1L;
+
             public TestType(int size, long value) {
                 super(size, value);
             }
@@ -114,6 +143,8 @@ public class IntegerTypeTest extends TestCase {
         assertEquals("Wrong unsigned int value", VALUE, new TestType(4, VALUE).longValue());
 
         class UnsignedTestType extends IntegerType {
+            private static final long serialVersionUID = 1L;
+
             public UnsignedTestType(int size, long value) {
                 super(size, value, true);
             }
@@ -122,6 +153,14 @@ public class IntegerTypeTest extends TestCase {
         assertTrue("Expected an unsigned value (ctor): " + tt.longValue(), tt.longValue() > 0);
         tt.setValue(-2);
         assertTrue("Expected an unsigned value: " + tt.longValue(), tt.longValue() > 0);
+    }
+
+    public void testCompareLongs() {
+        final long v1 = 7365L;
+        final long v2 = 3777347L;
+        assertEquals("Mismatched same value comparison", 0, IntegerType.compare(v1, v1));
+        assertEquals("Mismatched natural order comparison", (-1), IntegerType.compare(v1, v2));
+        assertEquals("Mismatched reversed order comparison", 1, IntegerType.compare(v2, v1));
     }
 
     public static void main(String[] args) {

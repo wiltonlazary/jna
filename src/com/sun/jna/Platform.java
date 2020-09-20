@@ -1,13 +1,31 @@
 /*
- * This library is free software; you can redistribute it and/or modify it under
- * the terms of the GNU Lesser General Public License as published by the
- * Free Software Foundation; either version 2.1 of the License, or (at
- * your option) any later version. This library is distributed in the
- * hope that it will be useful, but WITHOUT ANY WARRANTY; without even
- * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU Lesser General Public License for more details.
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** Provide simplified platform information. */
 public final class Platform {
@@ -33,6 +51,8 @@ public final class Platform {
      * running headless.
      */
     public static final boolean HAS_AWT;
+    /** Whether this platform supports the JAWT library. */
+    public static final boolean HAS_JAWT;
     /** Canonical name of this platform's math library. */
     public static final String MATH_LIBRARY_NAME;
     /** Canonical name of this platform's C runtime library. */
@@ -104,13 +124,14 @@ public final class Platform {
         // has the unintended side effect of actually loading AWT native libs,
         // which can be problematic
         HAS_AWT = osType != WINDOWSCE && osType != ANDROID && osType != AIX;
+        HAS_JAWT = HAS_AWT && osType != MAC;
         HAS_BUFFERS = hasBuffers;
         RO_FIELDS = osType != WINDOWSCE;
         C_LIBRARY_NAME = osType == WINDOWS ? "msvcrt" : osType == WINDOWSCE ? "coredll" : "c";
         MATH_LIBRARY_NAME = osType == WINDOWS ? "msvcrt" : osType == WINDOWSCE ? "coredll" : "m";
         HAS_DLL_CALLBACKS = osType == WINDOWS;
+        ARCH = getCanonicalArchitecture(System.getProperty("os.arch"), osType);
         RESOURCE_PREFIX = getNativeLibraryResourcePrefix();
-        ARCH = System.getProperty("os.arch").toLowerCase().trim();
     }
     private Platform() { }
     public static final int getOSType() {
@@ -127,10 +148,6 @@ public final class Platform {
     }
     public static final boolean isAIX() {
         return osType == AIX;
-    }
-    /** @deprecated */
-    public static final boolean isAix() {
-        return isAIX();
     }
     public static final boolean isWindowsCE() {
         return osType == WINDOWSCE;
@@ -172,50 +189,104 @@ public final class Platform {
         if (model != null) {
             return "64".equals(model);
         }
-        if ("x86_64".equals(ARCH)
+        if ("x86-64".equals(ARCH)
             || "ia64".equals(ARCH)
-            || "ppc64".equals(ARCH)
+            || "ppc64".equals(ARCH) || "ppc64le".equals(ARCH)
             || "sparcv9".equals(ARCH)
-            || "amd64".equals(ARCH)) {
+            || "mips64".equals(ARCH) || "mips64el".equals(ARCH)
+            || "amd64".equals(ARCH)
+            || "aarch64".equals(ARCH)) {
             return true;
         }
         return Native.POINTER_SIZE == 8;
     }
 
     public static final boolean isIntel() {
-        if (ARCH.equals("i386")
-            || ARCH.startsWith("i686")
-            || ARCH.equals("x86")
-            || ARCH.equals("x86_64")
-            || ARCH.equals("amd64")) {
+        if (ARCH.startsWith("x86")) {
             return true;
-        } 
+        }
         return false;
     }
 
     public static final boolean isPPC() {
-        if (ARCH.equals("ppc")
-            || ARCH.equals("ppc64")
-            || ARCH.equals("powerpc")
-            || ARCH.equals("powerpc64")) {
+        if (ARCH.startsWith("ppc")) {
             return true;
-        } 
+        }
         return false;
     }
 
     public static final boolean isARM() {
-        return ARCH.startsWith("arm");
+        return ARCH.startsWith("arm") || ARCH.startsWith("aarch");
     }
 
     public static final boolean isSPARC() {
         return ARCH.startsWith("sparc");
     }
 
-    /** Generate a canonical String prefix based on the current OS 
+    public static final boolean isMIPS() {
+        if (ARCH.equals("mips")
+            || ARCH.equals("mips64")
+            || ARCH.equals("mipsel")
+            || ARCH.equals("mips64el")) {
+            return true;
+        }
+        return false;
+    }
+
+    static String getCanonicalArchitecture(String arch, int platform) {
+        arch = arch.toLowerCase().trim();
+        if ("powerpc".equals(arch)) {
+            arch = "ppc";
+        }
+        else if ("powerpc64".equals(arch)) {
+            arch = "ppc64";
+        }
+        else if ("i386".equals(arch) || "i686".equals(arch)) {
+            arch = "x86";
+        }
+        else if ("x86_64".equals(arch) || "amd64".equals(arch)) {
+            arch = "x86-64";
+        }
+        // Work around OpenJDK mis-reporting os.arch
+        // https://bugs.openjdk.java.net/browse/JDK-8073139
+        if ("ppc64".equals(arch) && "little".equals(System.getProperty("sun.cpu.endian"))) {
+            arch = "ppc64le";
+        }
+        // Map arm to armel if the binary is running as softfloat build
+        if("arm".equals(arch) && platform == Platform.LINUX && isSoftFloat()) {
+            arch = "armel";
+        }
+
+        return arch;
+    }
+
+    static boolean isSoftFloat() {
+        try {
+            File self = new File("/proc/self/exe");
+            if (self.exists()) {
+                ELFAnalyser ahfd = ELFAnalyser.analyse(self.getCanonicalPath());
+                return ! ahfd.isArmHardFloat();
+            }
+        } catch (IOException ex) {
+            // asume hardfloat
+            Logger.getLogger(Platform.class.getName()).log(Level.INFO, "Failed to read '/proc/self/exe' or the target binary.", ex);
+        } catch (SecurityException ex) {
+            // asume hardfloat
+            Logger.getLogger(Platform.class.getName()).log(Level.INFO, "SecurityException while analysing '/proc/self/exe' or the target binary.", ex);
+        }
+        return false;
+    }
+
+    /** Generate a canonical String prefix based on the current OS
         type/arch/name.
     */
     static String getNativeLibraryResourcePrefix() {
-        return getNativeLibraryResourcePrefix(getOSType(), System.getProperty("os.arch"), System.getProperty("os.name"));
+        String prefix = System.getProperty("jna.prefix");
+        if(prefix != null) {
+            return prefix;
+        } else {
+            return getNativeLibraryResourcePrefix(getOSType(), System.getProperty("os.arch"), System.getProperty("os.name"));
+        }
     }
 
     /** Generate a canonical String prefix based on the given OS
@@ -226,61 +297,49 @@ public final class Platform {
     */
     static String getNativeLibraryResourcePrefix(int osType, String arch, String name) {
         String osPrefix;
-        arch = arch.toLowerCase().trim();
-        if ("powerpc".equals(arch)) {
-            arch = "ppc";
-        }
-        else if ("powerpc64".equals(arch)) {
-            arch = "ppc64";
-        }
-        else if ("i386".equals(arch)) {
-            arch = "x86";
-        }
-        else if ("x86_64".equals(arch) || "amd64".equals(arch)) {
-            arch = "x86-64";
-        }
+        arch = getCanonicalArchitecture(arch, osType);
         switch(osType) {
-        case Platform.ANDROID:
-            if (arch.startsWith("arm")) {
-                arch = "arm";
-            }
-            osPrefix = "android-" + arch;
-            break;
-        case Platform.WINDOWS:
-            osPrefix = "win32-" + arch;
-            break;
-        case Platform.WINDOWSCE:
-            osPrefix = "w32ce-" + arch;
-            break;
-        case Platform.MAC:
-            osPrefix = "darwin";
-            break;
-        case Platform.LINUX:
-            osPrefix = "linux-" + arch;
-            break;
-        case Platform.SOLARIS:
-            osPrefix = "sunos-" + arch;
-            break;
-        case Platform.FREEBSD:
-            osPrefix = "freebsd-" + arch;
-            break;
-        case Platform.OPENBSD:
-            osPrefix = "openbsd-" + arch;
-            break;
-        case Platform.NETBSD:
-            osPrefix = "netbsd-" + arch;
-            break;
-        case Platform.KFREEBSD:
-            osPrefix = "kfreebsd-" + arch;
-            break;
-        default:
-            osPrefix = name.toLowerCase();
-            int space = osPrefix.indexOf(" ");
-            if (space != -1) {
-                osPrefix = osPrefix.substring(0, space);
-            }
-            osPrefix += "-" + arch;
-            break;
+            case Platform.ANDROID:
+                if (arch.startsWith("arm")) {
+                    arch = "arm";
+                }
+                osPrefix = "android-" + arch;
+                break;
+            case Platform.WINDOWS:
+                osPrefix = "win32-" + arch;
+                break;
+            case Platform.WINDOWSCE:
+                osPrefix = "w32ce-" + arch;
+                break;
+            case Platform.MAC:
+                osPrefix = "darwin";
+                break;
+            case Platform.LINUX:
+                osPrefix = "linux-" + arch;
+                break;
+            case Platform.SOLARIS:
+                osPrefix = "sunos-" + arch;
+                break;
+            case Platform.FREEBSD:
+                osPrefix = "freebsd-" + arch;
+                break;
+            case Platform.OPENBSD:
+                osPrefix = "openbsd-" + arch;
+                break;
+            case Platform.NETBSD:
+                osPrefix = "netbsd-" + arch;
+                break;
+            case Platform.KFREEBSD:
+                osPrefix = "kfreebsd-" + arch;
+                break;
+            default:
+                osPrefix = name.toLowerCase();
+                int space = osPrefix.indexOf(" ");
+                if (space != -1) {
+                    osPrefix = osPrefix.substring(0, space);
+                }
+                osPrefix += "-" + arch;
+                break;
         }
         return osPrefix;
     }

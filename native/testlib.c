@@ -1,14 +1,25 @@
 /* Copyright (c) 2007-2013 Timothy Wall, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * <p/>
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ * The contents of this file is dual-licensed under 2 
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and 
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ * 
+ * You can freely decide which license you want to apply to 
+ * the project.
+ * 
+ * You may obtain a copy of the LGPL License at:
+ * 
+ * http://www.gnu.org/licenses/licenses.html
+ * 
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ * 
+ * You may obtain a copy of the Apache License at:
+ * 
+ * http://www.apache.org/licenses/
+ * 
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 
 /* Native library implementation to support JUnit tests. */
@@ -43,7 +54,7 @@ typedef __int64 int64_t;
 #define EXPORT __declspec(dllexport)
 #define SLEEP(MS) Sleep(MS)
 #define THREAD_T DWORD
-#define THREAD_CREATE(TP, FN, DATA) CreateThread(NULL, 0, FN, DATA, 0, TP)
+#define THREAD_CREATE(TP, FN, DATA, STACKSIZE) CreateThread(NULL, STACKSIZE, FN, DATA, 0, TP)
 #define THREAD_EXIT() ExitThread(0)
 #define THREAD_FUNC(FN,ARG) DWORD WINAPI FN(LPVOID ARG)
 #define THREAD_CURRENT() GetCurrentThreadId()
@@ -58,7 +69,15 @@ typedef __int64 int64_t;
 #include <pthread.h>
 #define SLEEP(MS) usleep(MS*1000)
 #define THREAD_T pthread_t
-#define THREAD_CREATE(TP, FN, DATA) pthread_create(TP, NULL, FN, DATA)
+#define THREAD_CREATE(TP, FN, DATA, STACKSIZE) {\
+  pthread_attr_t attr;\
+  pthread_attr_init(&attr);\
+  if (STACKSIZE > 0) {\
+    pthread_attr_setstacksize(&attr, STACKSIZE);\
+  }\
+  pthread_create(TP, &attr, FN, DATA);\
+  pthread_attr_destroy(&attr);\
+}
 #define THREAD_EXIT() pthread_exit(NULL)
 #define THREAD_FUNC(FN,ARG) void* FN(void *ARG)
 #define THREAD_RETURN return NULL
@@ -156,6 +175,14 @@ returnInt32Magic() {
 EXPORT int32_t  
 returnInt32Argument(int32_t arg) {
   return arg;
+}
+
+EXPORT int*
+returnPoint(int x, int y) {
+  int *p = malloc(2 * sizeof(int));
+  p[0] = x;
+  p[1] = y;
+  return p;
 }
 
 EXPORT int64_t  
@@ -551,7 +578,6 @@ getStructureSize(unsigned index) {
   return STRUCT_SIZES[index];
 }
 
-extern void exit(int);
 #define FIELD(T,X,N) (((T*)X)->field ## N)
 #define OFFSET(T,X,N) (int)(((char*)&FIELD(T,X,N))-((char*)&FIELD(T,X,0)))
 #define V8(N) (N+1)
@@ -658,7 +684,7 @@ static THREAD_FUNC(thread_function, arg) {
 }
 
 EXPORT void
-callVoidCallbackThreaded(void (*func)(void), int n, int ms, const char* name) {
+callVoidCallbackThreaded(void (*func)(void), int n, int ms, const char* name, int stacksize) {
   THREAD_T thread;
   thread_data* data = (thread_data*)malloc(sizeof(thread_data));
 
@@ -666,7 +692,7 @@ callVoidCallbackThreaded(void (*func)(void), int n, int ms, const char* name) {
   data->sleep_time = ms;
   data->func = func;
   snprintf(data->name, sizeof(data->name), "%s", name);
-  THREAD_CREATE(&thread, &thread_function, data);
+  THREAD_CREATE(&thread, &thread_function, data, stacksize);
 }
 
 EXPORT int 
@@ -748,8 +774,8 @@ callCallbackWithByReferenceArgument(int (*func)(int arg, int* result), int arg, 
 }
 
 EXPORT char*
-callStringCallback(char* (*func)(char* arg), char* arg) {
-  return (*func)(arg);
+callStringCallback(char* (*func)(const char* arg, const char* arg2), const char* arg, const char* arg2) {
+  return (*func)(arg, arg2);
 }
 
 EXPORT char**
@@ -758,8 +784,8 @@ callStringArrayCallback(char** (*func)(char** arg), char** arg) {
 }
 
 EXPORT wchar_t*
-callWideStringCallback(wchar_t* (*func)(wchar_t* arg), wchar_t* arg) {
-  return (*func)(arg);
+callWideStringCallback(wchar_t* (*func)(const wchar_t* arg, const wchar_t* arg2), const wchar_t* arg, const wchar_t* arg2) {
+  return (*func)(arg, arg2);
 }
 
 struct cbstruct {
@@ -779,7 +805,7 @@ callCallbackWithStructByValue(TestStructureByValue (*func)(TestStructureByValue)
 
 EXPORT callback_t
 callCallbackWithCallback(cb_callback_t cb) {
-  return (*cb)((callback_t)cb);
+  return (*cb)((callback_t)(void*)cb);
 }
 
 static int32_t 
@@ -848,12 +874,14 @@ fillDoubleBuffer(double *buf, int len, double value) {
   return len;
 }
 
+#include "ffi.h"
+
 EXPORT int32_t
-addInt32VarArgs(const char *fmt, ...) {
+addVarArgs(const char *fmt, ...) {
   va_list ap;
   int32_t sum = 0;
   va_start(ap, fmt);
-  
+
   while (*fmt) {
     switch (*fmt++) {
     case 'd':
@@ -864,6 +892,10 @@ addInt32VarArgs(const char *fmt, ...) {
       break;
     case 'c':
       sum += (int) va_arg(ap, int);
+      break;
+    case 'f': // float (promoted to ‘double’ when passed through ‘...’)
+    case 'g': // double
+      sum += (int) va_arg(ap, double);
       break;
     default:
       break;
@@ -904,6 +936,34 @@ returnStringVarArgs(const char *fmt, ...) {
   return cp;
 }
 
+EXPORT char *
+returnStringVarArgs2(const char *fmt, ...) {
+  char* cp;
+  va_list ap;
+  va_start(ap, fmt);
+  cp = va_arg(ap, char *);
+  va_end(ap);
+  return cp;
+}
+
+typedef union _MixedUnion1 {
+  int intValue;
+  double doubleValue;
+} MixedUnion1;
+
+EXPORT
+int stringifyMixedUnion1(
+        char* buffer, int bufferLength,
+        int dummyInt1, double dummyDouble1,
+        MixedUnion1 union1, MixedUnion1 union2,
+        int dummyInt2, double dummyDouble2) {
+    return snprintf(
+            buffer, bufferLength - 1,
+            "dummyInt1: %d, dummyDouble1: %.0f, dummyInt2: %d, dummyDouble2: %.0f, union1.intValue: %d, union2.doubleValue: %.0f",
+            dummyInt1, dummyDouble1, dummyInt2, dummyDouble2,
+            union1.intValue, union2.doubleValue);
+}
+
 #if defined(_WIN32) && !defined(_WIN64) && !defined(_WIN32_WCE)
 ///////////////////////////////////////////////////////////////////////
 // stdcall tests
@@ -942,15 +1002,15 @@ callInt32StdCallCallback(int32_t (__stdcall *func)(int32_t arg, int32_t arg2),
 }
 
 EXPORT int32_t __stdcall
-callBugCallback(void (__stdcall *func)(long,int,double,
-                                       const char*,const char*,
-                                       double,long,
-                                       double,long,long,long),
-                long arg1, int arg2, double arg3,
-                const char* arg4, const char* arg5,
-                double arg6, long arg7,
-                double arg8, long arg9,
-                long arg10, long arg11) {
+callManyArgsStdCallCallback(void (__stdcall *func)(long,int,double,
+                                                   const char*,const char*,
+                                                   double,long,
+                                                   double,long,long,long),
+                            long arg1, int arg2, double arg3,
+                            const char* arg4, const char* arg5,
+                            double arg6, long arg7,
+                            double arg8, long arg9,
+                            long arg10, long arg11) {
   void* sp1 = NULL;
   void* sp2 = NULL;
   int value = -1;
@@ -975,9 +1035,26 @@ callBugCallback(void (__stdcall *func)(long,int,double,
 
 #include <jni.h>
 #include <math.h>
+#include <sys/types.h>
+#include "dispatch.h"
 JNIEXPORT jdouble JNICALL
-Java_com_sun_jna_PerformanceTest_00024JNI_cos(JNIEnv *env, jclass cls, jdouble x) {
+Java_com_sun_jna_PerformanceTest_00024JNILibrary_cos(JNIEnv *UNUSED(env), jclass UNUSED(cls), jdouble x) {
   return cos(x);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_sun_jna_PerformanceTest_00024JNILibrary_getpid(JNIEnv *UNUSED(env), jclass UNUSED(cls)) {
+#ifdef _WIN32
+  extern int _getpid();
+  return _getpid();
+#else
+  return getpid();
+#endif
+}
+
+EXPORT jclass
+returnClass(JNIEnv *env, jobject arg) {
+  return (*env)->GetObjectClass(env, arg);
 }
 
 #ifdef __cplusplus

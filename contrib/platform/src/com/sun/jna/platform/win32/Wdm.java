@@ -1,37 +1,66 @@
 /* Copyright (c) 2010 Daniel Doubrovkine, All Rights Reserved
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.  
+ *
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32;
 
-import java.util.Arrays;
 import java.util.List;
 
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
-import com.sun.jna.win32.StdCallLibrary;
+import com.sun.jna.Structure.FieldOrder;
 
 /**
  * Ported from Wdm.h.
  * Microsoft Windows DDK.
  * @author dblock[at]dblock.org
  */
-public interface Wdm extends StdCallLibrary {
-	
+public interface Wdm {
+
     /**
-     * The KEY_BASIC_INFORMATION structure defines a subset of 
+     * The KEY_BASIC_INFORMATION structure defines a subset of
      * the full information that is available for a registry key.
      */
-    public static class KEY_BASIC_INFORMATION extends Structure {		
+    @FieldOrder({"LastWriteTime", "TitleIndex", "NameLength", "Name"})
+    public static class KEY_BASIC_INFORMATION extends Structure {
+        /**
+         * The last time the key or any of its values changed.
+         */
+        public long LastWriteTime;
+        /**
+         * Device and intermediate drivers should ignore this member.
+         */
+        public int TitleIndex;
+        /**
+         * Specifies the size in bytes of the following name.
+         */
+        public int NameLength;
+        /**
+         * A string of Unicode characters naming the key.
+         * The string is not null-terminated.
+         */
+        public char[] Name;
+
         public KEY_BASIC_INFORMATION() {
             super();
         }
@@ -41,33 +70,12 @@ public interface Wdm extends StdCallLibrary {
             Name = new char[NameLength];
             allocateMemory();
         }
-		
+
         public KEY_BASIC_INFORMATION(Pointer memory) {
             super(memory);
             read();
         }
-				
-        /**
-         * The last time the key or any of its values changed. 
-         */
-        public long LastWriteTime;
-        /**
-         * Device and intermediate drivers should ignore this member.
-         */
-        public int TitleIndex;
-        /**
-         * Specifies the size in bytes of the following name. 
-         */
-        public int NameLength;
-        /**
-         * A string of Unicode characters naming the key. 
-         * The string is not null-terminated.
-         */
-        public char[] Name;
-        
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "LastWriteTime", "TitleIndex", "NameLength", "Name" });
-        }
+
         /**
          * Name of the key.
          * @return String.
@@ -75,19 +83,20 @@ public interface Wdm extends StdCallLibrary {
         public String getName() {
             return Native.toString(Name);
         }
-		
+
+        @Override
         public void read() {
             super.read();
             Name = new char[NameLength / 2];
-            readField("Name");			
+            readField("Name");
         }
     }
-	
+
     /**
-     * The KEY_INFORMATION_CLASS enumeration type represents 
+     * The KEY_INFORMATION_CLASS enumeration type represents
      * the type of information to supply about a registry key.
      */
-    public abstract class KEY_INFORMATION_CLASS { 
+    public abstract class KEY_INFORMATION_CLASS {
         public static final int KeyBasicInformation = 0;
         public static final int KeyNodeInformation = 1;
         public static final int KeyFullInformation = 2;

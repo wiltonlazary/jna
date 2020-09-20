@@ -1,14 +1,25 @@
 /* Copyright (c) 2007 Timothy Wall, All Rights Reserved
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ *
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32;
 
@@ -25,11 +36,15 @@ import com.sun.jna.platform.win32.WinNT.FILE_NOTIFY_INFORMATION;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class W32FileMonitor extends FileMonitor {
-    
+
+    private static final Logger LOG = Logger.getLogger(W32FileMonitor.class.getName());
+
     private static final int BUFFER_SIZE = 4096;
-    
+
     private class FileInfo {
         public final File file;
         public final HANDLE handle;
@@ -50,7 +65,7 @@ public class W32FileMonitor extends FileMonitor {
     private final Map<File, FileInfo> fileMap = new HashMap<File, FileInfo>();
     private final Map<HANDLE, FileInfo> handleMap = new HashMap<HANDLE, FileInfo>();
     private boolean disposing = false;
-    
+
     private void handleChanges(FileInfo finfo) throws IOException {
         Kernel32 klib = Kernel32.INSTANCE;
         FILE_NOTIFY_INFORMATION fni = finfo.info;
@@ -60,54 +75,54 @@ public class W32FileMonitor extends FileMonitor {
             FileEvent event = null;
             File file = new File(finfo.file, fni.getFilename());
             switch(fni.Action) {
-            case 0:
-            	break;
-            case WinNT.FILE_ACTION_MODIFIED:
-                event = new FileEvent(file, FILE_MODIFIED); 
-                break;
-            case WinNT.FILE_ACTION_ADDED:
-                event = new FileEvent(file, FILE_CREATED); 
-                break;
-            case WinNT.FILE_ACTION_REMOVED:
-                event = new FileEvent(file, FILE_DELETED); 
-                break;
-            case WinNT.FILE_ACTION_RENAMED_OLD_NAME:
-                event = new FileEvent(file, FILE_NAME_CHANGED_OLD); 
-                break;
-            case WinNT.FILE_ACTION_RENAMED_NEW_NAME:
-                event = new FileEvent(file, FILE_NAME_CHANGED_NEW); 
-                break;
-            default:
-                // TODO: other actions...
-                System.err.println("Unrecognized file action '" + fni.Action + "'");
+                case 0:
+                    break;
+                case WinNT.FILE_ACTION_MODIFIED:
+                    event = new FileEvent(file, FILE_MODIFIED);
+                    break;
+                case WinNT.FILE_ACTION_ADDED:
+                    event = new FileEvent(file, FILE_CREATED);
+                    break;
+                case WinNT.FILE_ACTION_REMOVED:
+                    event = new FileEvent(file, FILE_DELETED);
+                    break;
+                case WinNT.FILE_ACTION_RENAMED_OLD_NAME:
+                    event = new FileEvent(file, FILE_NAME_CHANGED_OLD);
+                    break;
+                case WinNT.FILE_ACTION_RENAMED_NEW_NAME:
+                    event = new FileEvent(file, FILE_NAME_CHANGED_NEW);
+                    break;
+                default:
+                    // TODO: other actions...
+                    LOG.log(Level.WARNING, "Unrecognized file action ''{0}''", fni.Action);
             }
-        
+
             if (event != null) {
                 notify(event);
             }
-            
+
             fni = fni.next();
         } while (fni != null);
-        
+
         // trigger the next read
         if (!finfo.file.exists()) {
             unwatch(finfo.file);
             return;
         }
-        
-        if (!klib.ReadDirectoryChangesW(finfo.handle, finfo.info, 
-        		finfo.info.size(), finfo.recursive, finfo.notifyMask, 
-        		finfo.infoLength, finfo.overlapped, null)) {        	
-        	if (! disposing) {
-        		int err = klib.GetLastError();
-        		throw new IOException("ReadDirectoryChangesW failed on "
-                                  + finfo.file + ": '" 
-                                  + Kernel32Util.formatMessageFromLastErrorCode(err)
-                                  + "' (" + err + ")");
-        	}
+
+        if (!klib.ReadDirectoryChangesW(finfo.handle, finfo.info,
+                finfo.info.size(), finfo.recursive, finfo.notifyMask,
+                finfo.infoLength, finfo.overlapped, null)) {
+            if (!disposing) {
+                int err = klib.GetLastError();
+                throw new IOException("ReadDirectoryChangesW failed on "
+                        + finfo.file + ": '"
+                        + Kernel32Util.formatMessageFromLastErrorCode(err)
+                        + "' (" + err + ")");
+            }
         }
     }
-    
+
     private FileInfo waitForChange() {
         IntByReference rcount = new IntByReference();
         ULONG_PTRByReference rkey = new ULONG_PTRByReference();
@@ -115,11 +130,11 @@ public class W32FileMonitor extends FileMonitor {
         if (! Kernel32.INSTANCE.GetQueuedCompletionStatus(port, rcount, rkey, roverlap, WinBase.INFINITE)) {
             return null;
         }
-        synchronized (this) { 
+        synchronized (this) {
             return handleMap.get(new HANDLE(rkey.getValue().toPointer()));
         }
     }
-    
+
     private int convertMask(int mask) {
         int result = 0;
         if ((mask & FILE_CREATED) != 0) {
@@ -151,6 +166,7 @@ public class W32FileMonitor extends FileMonitor {
 
     private static int watcherThreadID;
 
+    @Override
     protected synchronized void watch(File file, int eventMask, boolean recursive) throws IOException {
         File dir = file;
         if (!dir.isDirectory()) {
@@ -169,12 +185,12 @@ public class W32FileMonitor extends FileMonitor {
             | WinNT.FILE_SHARE_WRITE | WinNT.FILE_SHARE_DELETE;
         int flags = WinNT.FILE_FLAG_BACKUP_SEMANTICS
             | WinNT.FILE_FLAG_OVERLAPPED;
-        HANDLE handle = klib.CreateFile(file.getAbsolutePath(), 
-        		WinNT.FILE_LIST_DIRECTORY,
-        		mask, null, WinNT.OPEN_EXISTING,
+        HANDLE handle = klib.CreateFile(file.getAbsolutePath(),
+                WinNT.FILE_LIST_DIRECTORY,
+                mask, null, WinNT.OPEN_EXISTING,
                 flags, null);
         if (WinBase.INVALID_HANDLE_VALUE.equals(handle)) {
-            throw new IOException("Unable to open " + file + " (" 
+            throw new IOException("Unable to open " + file + " ("
                                   + klib.GetLastError() + ")");
         }
         int notifyMask = convertMask(eventMask);
@@ -188,10 +204,10 @@ public class W32FileMonitor extends FileMonitor {
                     + "for " + file + " ("
                     + klib.GetLastError() + ")");
         }
-        // TODO: use FileIOCompletionRoutine callback method instead of a 
+        // TODO: use FileIOCompletionRoutine callback method instead of a
         // dedicated thread
-        if (!klib.ReadDirectoryChangesW(handle, finfo.info, finfo.info.size(), 
-                                        recursive, notifyMask, finfo.infoLength, 
+        if (!klib.ReadDirectoryChangesW(handle, finfo.info, finfo.info.size(),
+                                        recursive, notifyMask, finfo.infoLength,
                                         finfo.overlapped, null)) {
             int err = klib.GetLastError();
             throw new IOException("ReadDirectoryChangesW failed on "
@@ -201,24 +217,24 @@ public class W32FileMonitor extends FileMonitor {
         }
         if (watcher == null) {
             watcher = new Thread("W32 File Monitor-" + (watcherThreadID++)) {
+                @Override
                 public void run() {
                     FileInfo finfo;
                     while (true) {
-                       finfo = waitForChange();
-                       if (finfo == null) {
-                          synchronized(W32FileMonitor.this) {
-                             if (fileMap.isEmpty()) {
-                                watcher = null;
-                                break;
-                             }
-                          }
-                          continue;
+                        finfo = waitForChange();
+                        if (finfo == null) {
+                            synchronized (W32FileMonitor.this) {
+                                if (fileMap.isEmpty()) {
+                                    watcher = null;
+                                    break;
+                                }
+                            }
+                            continue;
                         }
-                       
+
                         try {
                             handleChanges(finfo);
-                        }
-                        catch(IOException e) {
+                        } catch (IOException e) {
                             // TODO: how is this best handled?
                             e.printStackTrace();
                         }
@@ -230,28 +246,30 @@ public class W32FileMonitor extends FileMonitor {
         }
     }
 
+    @Override
     protected synchronized void unwatch(File file) {
         FileInfo finfo = fileMap.remove(file);
         if (finfo != null) {
             handleMap.remove(finfo.handle);
             Kernel32 klib = Kernel32.INSTANCE;
             // bug: the watcher may still be processing this file
-            klib.CloseHandle(finfo.handle);
+            klib.CloseHandle(finfo.handle); // TODO check error code if failed to close
         }
     }
-    
+
+    @Override
     public synchronized void dispose() {
-    	disposing = true;
-    	
+        disposing = true;
+
         // unwatch any remaining files in map, allows watcher thread to exit
         int i = 0;
         for (Object[] keys = fileMap.keySet().toArray(); !fileMap.isEmpty();) {
             unwatch((File)keys[i++]);
         }
-        
+
         Kernel32 klib = Kernel32.INSTANCE;
         klib.PostQueuedCompletionStatus(port, 0, null, null);
-        klib.CloseHandle(port);
+        klib.CloseHandle(port); // TODO check error code if failed to close
         port = null;
         watcher = null;
     }

@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="platform" default="default" basedir=".">
+<project name="platform"
+         default="default"
+         basedir="."
+         xmlns:as="antlib:org.codehaus.mojo.animal_sniffer"
+         xmlns:if="ant:if"
+         xmlns:unless="ant:unless">
     <description>Builds and tests platform-specific code.</description>
     <import file="nbproject/build-impl.xml"/>
     <!--
@@ -64,63 +69,200 @@
 
     -->
 
-    <target name="-do-jar-without-manifest">
-       <jar jarfile="${dist.jar}" compress="${jar.compress}">
-         <manifest>
-           <attribute name="Main-Class" value="com.sun.jna.Native"/>
-           <attribute name="Manifest-Version" value="1.0"/>
-           <attribute name="Implementation-Title" value="${impl.title}"/>
-           <attribute name="Implementation-Vendor" value="${vendor}"/>
-           <attribute name="Implementation-Version" value="${impl.version}"/>
-           <attribute name="Specification-Title" value="${spec.title}"/>
-           <attribute name="Specification-Vendor" value="${spec.vendor}"/>
-           <attribute name="Specification-Version" value="${spec.version}"/>
-           <!--
-              OSGi Bundle attributes
-              See http://www.osgi.org/Specifications/Reference
-            -->
-           <attribute name="Bundle-Category" value="jni"/>
-           <attribute name="Bundle-ManifestVersion" value="2"/>
-           <attribute name="Bundle-Name" value="jna-platform"/>
-           <attribute name="Bundle-Description" value="JNA Platform Library"/>
-           <attribute name="Bundle-SymbolicName" value="com.sun.jna.platform"/>
-           <attribute name="Bundle-Version" value="${osgi.version}"/>
-           <attribute name="Bundle-RequiredExecutionEnvironment" value="J2SE-1.4"/>
-           <attribute name="Bundle-Vendor" value="${vendor}"/>
-           <attribute name="Require-Bundle" value="com.sun.jna;bundle-version=&quot;${osgi.version}&quot;"/>
-           <attribute name="Export-Package"
-                   value="
-com.sun.jna.platform,
-com.sun.jna.platform.dnd,
-com.sun.jna.platform.mac,
-com.sun.jna.platform.unix,
-com.sun.jna.platform.win32,
-com.sun.jna.platform.win32.COM,
-com.sun.jna.platform.win32.COM.tlb,
-com.sun.jna.platform.win32.COM.tlb.imp,
-com.sun.jna.platform.wince
-"/>
-         </manifest>
-         <fileset dir="${build.classes.dir}"/>
-       </jar>
+    <!-- Prepare additional ant task -->
+    <path id="maven-ant-tasks.classpath">
+        <pathelement location="../../lib/animal-sniffer-ant-tasks-1.17.jar" />
+        <pathelement location="../../lib/maven-ant-tasks-2.1.3.jar" />
+    </path>
+    <typedef resource="org/codehaus/mojo/animal_sniffer/antlib.xml"
+             uri="antlib:org.codehaus.mojo.animal_sniffer"
+             classpathref="maven-ant-tasks.classpath" />
+
+    <!-- the -init-macrodef-copylibs target superseeds the target defined in
+    build-impl.xml. The classpath that the base copylibs target adds to the
+    MANIFEST.MF interferes with spring-boot and tomcat   -->
+    <target name="-init-macrodef-copylibs">
+        <macrodef name="copylibs" uri="http://www.netbeans.org/ns/j2se-project/3">
+            <attribute default="${manifest.file}" name="manifest"/>
+            <element name="customize" optional="true"/>
+            <sequential>
+                <property location="${build.classes.dir}" name="build.classes.dir.resolved"/>
+                <pathconvert property="run.classpath.without.build.classes.dir">
+                    <path path="${run.classpath}"/>
+                    <map from="${build.classes.dir.resolved}" to=""/>
+                </pathconvert>
+                <pathconvert pathsep=" " property="jar.classpath">
+                    <path path="${run.classpath.without.build.classes.dir}"/>
+                    <chainedmapper>
+                        <flattenmapper/>
+                        <filtermapper>
+                            <replacestring from=" " to="%20"/>
+                        </filtermapper>
+                        <globmapper from="*" to="lib/*"/>
+                    </chainedmapper>
+                </pathconvert>
+                <taskdef classname="org.netbeans.modules.java.j2seproject.copylibstask.CopyLibs" classpath="${libs.CopyLibs.classpath}" name="copylibs"/>
+                <copylibs compress="${jar.compress}" excludeFromCopy="${copylibs.excludes}" index="${jar.index}" indexMetaInf="${jar.index.metainf}" jarfile="${dist.jar}" manifest="@{manifest}" rebase="${copylibs.rebase}" runtimeclasspath="${run.classpath.without.build.classes.dir}">
+                    <fileset dir="${build.classes.dir}" excludes="${dist.archive.excludes}"/>
+                    <manifest>
+                        <!--<attribute name="Class-Path" value="${jar.classpath}"/>-->
+                        <customize/>
+                    </manifest>
+                </copylibs>
+            </sequential>
+        </macrodef>
     </target>
 
-    <target name="test" depends="init,compile,compile-test,-pre-test-run" description="Run platform unit tests.">
+    <target name="-prepare-anttools">
+        <subant antfile="build-ant-tools.xml" buildpath="${basedir}/../../"></subant>
+        <taskdef name="BuildArmSoftFloatDetector" classname="com.sun.jna.BuildArmSoftFloatDetector" classpath="${basedir}/../../build/ant-tools:${basedir}/../../lib/asm-8.0.1.jar" />
+        <taskdef name="CalcAndroidVersion" classname="com.sun.jna.ant.CalcAndroidVersion" classpath="${basedir}/../../build/ant-tools:${basedir}/../../lib/asm-8.0.1.jar" />
+        <taskdef name="ModuleGenerator" classname="com.sun.jna.ant.ModuleGenerator" classpath="${basedir}/../../build/ant-tools:${basedir}/../../lib/asm-8.0.1.jar" />
+    </target>
+
+    <macrodef name="build-manifest">
+        <attribute name="target" />
+        <attribute name="module-info" default="false" />
+        <sequential>
+            <manifest file="@{target}" mode="replace">
+                <attribute name="Manifest-Version" value="1.0"/>
+                <attribute name="Implementation-Title" value="${impl.title}"/>
+                <attribute name="Implementation-Vendor" value="${vendor}"/>
+                <attribute name="Implementation-Version" value="${impl.version}"/>
+                <attribute name="Specification-Title" value="${spec.title}"/>
+                <attribute name="Specification-Vendor" value="${spec.vendor}"/>
+                <attribute name="Specification-Version" value="${spec.version}"/>
+                <!--
+                  OSGi Bundle attributes
+                  See http://www.osgi.org/Specifications/Reference
+                -->
+                <attribute name="Bundle-Category" value="jni"/>
+                <attribute name="Bundle-ManifestVersion" value="2"/>
+                <attribute name="Bundle-Name" value="jna-platform"/>
+                <attribute name="Bundle-Description" value="JNA Platform Library"/>
+                <attribute name="Bundle-SymbolicName" value="com.sun.jna.platform"/>
+                <attribute name="Bundle-Version" value="${osgi.version}"/>
+                <attribute name="Bundle-RequiredExecutionEnvironment" value="J2SE-1.4"/>
+                <attribute name="Bundle-Vendor" value="${vendor}"/>
+                <attribute name="Require-Bundle" value="com.sun.jna;bundle-version=&quot;${osgi.version}&quot;"/>
+                <attribute name="Export-Package"
+                           value="
+com.sun.jna.platform;version=${osgi.version},
+com.sun.jna.platform.dnd;version=${osgi.version},
+com.sun.jna.platform.linux;version=${osgi.version},
+com.sun.jna.platform.mac;version=${osgi.version},
+com.sun.jna.platform.unix;version=${osgi.version},
+com.sun.jna.platform.unix.aix;version=${osgi.version},
+com.sun.jna.platform.unix.solaris;version=${osgi.version},
+com.sun.jna.platform.win32;version=${osgi.version},
+com.sun.jna.platform.win32.COM;version=${osgi.version},
+com.sun.jna.platform.win32.COM.tlb;version=${osgi.version},
+com.sun.jna.platform.win32.COM.tlb.imp;version=${osgi.version},
+com.sun.jna.platform.win32.COM.util;version=${osgi.version},
+com.sun.jna.platform.win32.COM.util.annotation;version=${osgi.version},
+com.sun.jna.platform.wince;version=${osgi.version}
+"/>
+            </manifest>
+            <manifest file="@{target}" mode="update" if:true="@{module-info}">
+                <attribute name="Multi-Release" value="true"/>
+            </manifest>
+            <manifest file="@{target}" mode="update" unless:true="@{module-info}">
+                <attribute name="Automatic-Module-Name" value="com.sun.jna.platform"/>
+            </manifest>
+        </sequential>
+    </macrodef>
+
+    <target name="-pre-jar" depends="-prepare-anttools">
+        <delete dir="${build.classes.dir}/META-INF" />
+        <mkdir dir="${build.classes.dir}/META-INF"/>
+        <copy todir="${build.classes.dir}/META-INF">
+            <fileset dir="../../" includes="LICENSE,AL2.0,LGPL2.1"/>
+        </copy>
+    </target>
+
+    <target name="-post-jar" depends="-prepare-anttools">
+        <delete dir="${build.dir}/manifest"/>
+        <mkdir dir="${build.dir}/manifest"/>
+        <build-manifest target="${build.dir}/manifest/module.mf" module-info="true"/>
+        <build-manifest target="${build.dir}/manifest/automatic.mf" module-info="false"/>
+        <ModuleGenerator
+            targetFile="${build.dir}/manifest/module-info.class"
+            name="com.sun.jna.platform"
+            version="${osgi.version}"
+            open="false"
+        >
+            <exports package="com.sun.jna.platform" />
+            <exports package="com.sun.jna.platform.dnd" />
+            <exports package="com.sun.jna.platform.linux" />
+            <exports package="com.sun.jna.platform.mac" />
+            <exports package="com.sun.jna.platform.unix" />
+            <exports package="com.sun.jna.platform.unix.aix" />
+            <exports package="com.sun.jna.platform.unix.solaris" />
+            <exports package="com.sun.jna.platform.win32" />
+            <exports package="com.sun.jna.platform.win32.COM" />
+            <exports package="com.sun.jna.platform.win32.COM.tlb" />
+            <exports package="com.sun.jna.platform.win32.COM.tlb.imp" />
+            <exports package="com.sun.jna.platform.win32.COM.util" />
+            <exports package="com.sun.jna.platform.win32.COM.util.annotation" />
+            <exports package="com.sun.jna.platform.wince" />
+            <requires module="java.logging" />
+            <requires module="java.desktop" />
+            <requires module="java.datatransfer" />
+            <requires module="com.sun.jna" />
+        </ModuleGenerator>
+        <move file="dist/jna-platform.jar" tofile="${build.dir}/jna-platform-base.jar" />
+        <jar jarfile="dist/jna-platform.jar" duplicate="preserve" createUnicodeExtraFields="never" encoding="UTF-8" manifest="${build.dir}/manifest/automatic.mf">
+            <zipfileset src="${build.dir}/jna-platform-base.jar" excludes="META-INF/MANIFEST.mf"/>
+        </jar>
+        <jar jarfile="dist/jna-platform-jpms.jar" duplicate="preserve" createUnicodeExtraFields="never" encoding="UTF-8" manifest="${build.dir}/manifest/module.mf">
+            <zipfileset src="${build.dir}/jna-platform-base.jar" excludes="META-INF/MANIFEST.mf"/>
+            <zipfileset dir="${build.dir}/manifest/" includes="module-info.class" prefix="META-INF/versions/9"/>
+        </jar>
+    </target>
+
+    <condition property="compatibility-check" value="true">
+        <equals arg1="${javac.target}" arg2="1.6" />
+    </condition>
+
+    <target name="-check-java6-compatibility" depends="init,compile,compile-test,-pre-test-run" if="compatibility-check">
+      <echo>Checking JDK compatibility 1.6</echo>
+
+      <echo></echo>
+
+      <as:check-signature signature="../../lib/java16-1.1.signature">
+          <path path="${classes}"/>
+      </as:check-signature>
+
+      <echo></echo>
+    </target>
+
+    <target name="-warn-java6-compatiblity" depends="init,compile,compile-test,-pre-test-run" unless="compatibility-check">
+      <echo level="warn">Build is not Java 6 compatible and NOT A PRODUCTION BUILD</echo>
+    </target>
+
+    <target name="test" depends="init,compile,compile-test,-pre-test-run,-check-java6-compatibility,-warn-java6-compatiblity" description="Run platform unit tests.">
       <echo>Running platform tests: ${test.src.dir}</echo>
       <property name="test.fork" value="yes"/>
-      <property name="build.test.results.dir.abs" location="${build.test.results.dir}"/>
-      <mkdir dir="${build.test.results.dir.abs}"/>
-      <echo>Saving test results in ${build.test.results.dir.abs}</echo>
-      <condition property="tests.platform" value="**/mac/**">
+      <property name="reports.junit" location="${build.dir}/reports/junit/${os.prefix}"/>
+      <property name="results.junit" location="${build.dir}/junit-results/${os.prefix}"/>
+      <mkdir dir="${results.junit}"/>
+      <echo>Saving test results in ${results.junit}</echo>
+      <condition property="tests.platform.mac" value="**/mac/**/*Test.java">
         <os family="mac"/>
       </condition>
-      <condition property="tests.platform" value="**/win32/**">
+      <condition property="tests.platform.windows" value="**/win32/**/*Test.java">
         <os family="windows"/>
       </condition>
-      <condition property="tests.platform" value="**/unix/**">
-        <os family="unix"/>
+      <condition property="tests.platform.linux" value="**/linux/**/*Test.java">
+        <os name="Linux"/>
       </condition>
-      <property name="tests.platform" value=""/>
+      <condition property="tests.platform.unix" value="**/unix/**/*Test.java">
+        <and><os family="unix"/><not><os family="mac"/></not></and>
+      </condition>
+      <property name="tests.platform.mac" value=""/>
+      <property name="tests.platform.windows" value=""/>
+      <property name="tests.platform.linux" value=""/>
+      <property name="tests.platform.unix" value=""/>
       <property name="tests.exclude" value=""/>
       <property name="tests.exclude-patterns" value=""/>
       <condition property="java.awt.headless" value="true">
@@ -136,44 +278,50 @@ com.sun.jna.platform.wince
       <propertyset id="headless">
         <propertyref prefix="java.awt.headless"/>
       </propertyset>
-      <echo>tests.platform=${tests.platform}</echo>
+      <echo>tests.platform.mac=${tests.platform.mac}</echo>
+      <echo>tests.platform.windows=${tests.platform.windows}</echo>
+      <echo>tests.platform.linux=${tests.platform.linux}</echo>
+      <echo>tests.platform.unix=${tests.platform.unix}</echo>
+      <propertyset id="native.api.windows">
+        <propertyref name="w32.ascii"/>
+      </propertyset>
       <junit fork="${test.fork}" failureproperty="testfailure" tempdir="${build.dir}">
         <!-- optionally run headless -->
         <syspropertyset refid="headless"/>
         <!-- avoid VM conflicts with JNA protected mode -->
         <env key="${ld.preload.name}" file="${libjsig}"/>
         <!-- Ignore any system install of JNA -->
-        <sysproperty key="jna.nosys" value="true"/>
-        <!-- Avoid VM crashes, if possible -->
-        <sysproperty key="jna.protected" value="true"/>
         <sysproperty key="jna.builddir" file="${file.reference.jna.build}"/>
+        <!-- Optionally force native API on Windows -->
+        <syspropertyset refid="native.api.windows"/>
         <jvmarg value="${vmopt.arch}"/>
         <classpath><path path="${run.test.classpath}"/><path path="${file.reference.jna.build}/test-classes"/></classpath>
         <formatter type="brief" usefile="false"/>
         <formatter type="xml"/>
-        <batchtest todir="${build.test.results.dir}">
+        <batchtest todir="${results.junit}">
           <fileset dir="${test.src.dir}" excludes="${tests.exclude-patterns}">
             <!-- Until StructureFieldOrderTest gets fixed up a little -->
-            <exclude name="**/StructureFieldOrderTest.java"/>
-            <include name="com/sun/jna/platform/*Test.java"/>
-            <include name="${tests.platform}"/>
+            <include name="com/sun/jna/platform/*Test.java" />
+            <include name="${tests.platform.mac}"/>
+            <include name="${tests.platform.windows}"/>
+            <include name="${tests.platform.linux}"/>
+            <include name="${tests.platform.unix}"/>
             <exclude name="${tests.exclude}"/>
           </fileset>
         </batchtest>
       </junit>
-      <junitreport todir="${build.test.results.dir}">
-	<fileset dir="${build.test.results.dir}">
-	  <include name="TEST-*.xml"/>
-	</fileset>
-	<report todir="${build.test.results.dir}"/>
+      <junitreport todir="${results.junit}">
+        <fileset dir="${results.junit}">
+          <include name="TEST-*.xml"/>
+        </fileset>
+        <report todir="${reports.junit}"/>
       </junitreport>
-      <echo message="View test report in file://${build.test.results.dir.abs}/index.html" />
+      <echo message="View test report in file://${reports.junit}/index.html" />
       <fail if="testfailure">One or more tests failed</fail>
     </target>
 
     <!-- One-off test to check field order definitions -->
     <target name="test-field-order" depends="-pre-test-run-single" >
-        <!-- @todo How to ensure sys prop: jna.nosys=true is seen in tests? -->
         <!--<property name="test.includes" value="com/sun/jna/platform/**/*.java"/>-->
         <property name="test.includes" value="com/sun/jna/platform/StructureFieldOrderTest.java"/>
         <property name="javac.includes" value="**/*"/>

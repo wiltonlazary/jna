@@ -1,12 +1,26 @@
 /*
- * Copyright (c) 2007-2008 Timothy Wall, All Rights Reserved This library is
- * free software; you can redistribute it and/or modify it under the
- * terms of the GNU Lesser General Public License as published by the
- * Free Software Foundation; either version 2.1 of the License, or (at
- * your option) any later version. This library is distributed in the
- * hope that it will be useful, but WITHOUT ANY WARRANTY; without even
- * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE. See the GNU Lesser General Public License for more details.
+ * Copyright (c) 2007-2008 Timothy Wall, All Rights Reserved
+ *
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
+ *
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.contrib.demo;
 
@@ -145,9 +159,9 @@ public class AlphaMaskDemo2 implements Runnable {
         JPanel p = new JPanel(new BorderLayout(8, 8));
         p.setBorder(new EmptyBorder(8, 8, 8, 8));
         p.setTransferHandler(new TransferHandler() {
-			private static final long serialVersionUID = 1L;
-			public boolean canImport(JComponent comp,
-                                     DataFlavor[] transferFlavors) {
+            private static final long serialVersionUID = 1L;
+            public boolean canImport(JComponent comp,
+                    DataFlavor[] transferFlavors) {
                 List<DataFlavor> list = Arrays.asList(transferFlavors);
                 if (list.contains(URL_FLAVOR) || list.contains(URI_LIST_FLAVOR)
                     || list.contains(DataFlavor.imageFlavor)
@@ -245,12 +259,11 @@ public class AlphaMaskDemo2 implements Runnable {
                 return false;
             }
         });
-        p
-         .add(
-              new JLabel(
-                         "<html><center>Drop an image with an alpha channel onto this window<br>"
-                             + "You may also adjust the overall transparency with the slider</center></html>"),
-              BorderLayout.NORTH);
+        p.add(
+            new JLabel(
+                "<html><center>Drop an image with an alpha channel onto this window<br>"
+                + "You may also adjust the overall transparency with the slider</center></html>"),
+            BorderLayout.NORTH);
         p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         final JSlider slider = new JSlider(0, 255, 255);
         slider.addChangeListener(new ChangeListener() {

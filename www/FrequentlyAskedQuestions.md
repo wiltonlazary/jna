@@ -3,12 +3,34 @@ Frequently Asked Questions
 
 I'm having trouble generating correct library mappings
 ------------------------------------------------------
-Make sure you've read [this page](https://github.com/twall/jna/tree/master/www/Mappings.md) and [this one](http://twall.github.com/jna/3.4.0/javadoc/overview-summary.html#overview_description).  Try [JNAerator](http://code.google.com/p/jnaerator/).  If you find its output too verbose, delete the mappings you don't need, or copy out the ones you do need.
+Make sure you've read [this page](https://github.com/java-native-access/jna/blob/master/www/Mappings.md) and [this one](http://java-native-access.github.io/jna/4.2.1/overview-summary.html#overview.description).  Try [JNAerator](https://github.com/nativelibs4java/JNAerator).  If you find its output too verbose, delete the mappings you don't need, or copy out the ones you do need.
 
-Calling `Native.loadLibrary()` causes an UnsatisfiedLinkError
--------------------------------------------------------------
+JNA is missing function XXX in its platform library mappings
+------------------------------------------------------------
+No, it's not, it's just waiting for you to add it :)
+```java
+public interface MyUser32 extends User32 {
+    // DEFAULT_OPTIONS is critical for W32 API functions to simplify ASCII/UNICODE details
+    MyUser32 INSTANCE = (MyUser32)Native.load("user32", W32APIOptions.DEFAULT_OPTIONS);
+    void ThatFunctionYouReallyNeed();
+}
+```
+That's all it takes. If you'd like to submit the change back to JNA, make sure you provide a change log entry and corresponding test that invokes the function to prove that the mapping works.  We don't really care what the API actually does, the call can be a very minimal invocation, but should ensure all the parameters are correctly passed and that you get a reasonable return value.
 
-Set the system property `jna.debug_load=true`, and JNA will print its library search steps to the console.  `jna.debug_load.jna` will trace the search for JNA's own native support.
+Calling `Native.load()` causes an UnsatisfiedLinkError
+------------------------------------------------------
+
+Set the system property `jna.debug_load=true`, and JNA will print its library 
+search steps to the console. `jna.debug_load.jna` will trace the search for 
+JNA's own native support.
+
+If the native prefix value is misdetected. It can be overriden by the 
+`jna.prefix` system property. For example if the binary running the JVM follows
+the arm softfloat ABI, you can specify the `armel` prefix like this:
+
+```
+java -Djna.prefix=linux-armel <normalCall>
+```
 
 My library mapping causes an UnsatisfiedLinkError
 -------------------------------------------------
@@ -26,93 +48,96 @@ When should I use `Structure.ByReference`? `Structure.ByValue`? `Structure[]`?
 ------------------------------------------------------------------------------
 
 Find your corresponding native declaration below:
+```c
+typedef struct _simplestruct {
+  int myfield;
+} simplestruct;
 
-    typedef struct _simplestruct {
-      int myfield;
-    } simplestruct;
+typedef struct _outerstruct {
+  simplestruct nested; // use Structure
+} outerstruct;
 
-    typedef struct _outerstruct {
-      simplestruct nested; // use Structure
-    } outerstruct;
+typedef struct _outerstruct2 {
+  simplestruct *byref; // use Structure.ByReference
+} outerstruct2;
 
-    typedef struct _outerstruct2 {
-      simplestruct *byref; // use Structure.ByReference
-    } outerstruct2;
+typedef struct _outerstruct3 {
+  simplestruct array[4]; // use Structure[]
+} outerstruct3;
 
-    typedef struct _outerstruct3 {
-      simplestruct array[4]; // use Structure[]
-    } outerstruct3;
+typedef struct _outerstruct4 {
+  simplestruct* ptr_array[4]; // use Structure.ByReference[]
+} outerstruct4;
 
-    typedef struct _outerstruct4 {
-      simplestruct* ptr_array[4]; // use Structure.ByReference[]
-    } outerstruct4;
+// Field is a pointer to an array of struct
+typedef struct _outerstruct5 {
+  simplestruct* ptr_to_array; // use Structure.ByReference, and use
+                              // Structure.toArray() to allocate the array, 
+                              // then assign the first array element to the field
+} outerstruct5;
 
-    // Field is a pointer to an array of struct
-    typedef struct _outerstruct5 {
-      simplestruct* ptr_to_array; // use Structure.ByReference, and use
-                                  // Structure.toArray() to allocate the array, 
-                                  // then assign the first array element to the field
-    } outerstruct5;
+// struct pointers as return value or argument
+simplestruct *myfunc(); // use Structure
+void myfunc(simplestruct* data); // use Structure
+void myfunc(simplestruct* data_array, int count); // use Structure[], and use Structure.toArray() to generate the array
+void myfunc(simplestruct** data_array, int count); // use Structure.ByReference[]
 
-    // struct pointers as return value or argument
-    simplestruct *myfunc(); // use Structure
-    void myfunc(simplestruct* data); // use Structure
-    void myfunc(simplestruct* data_array, int count); // use Structure[], and use Structure.toArray() to generate the array
-    void myfunc(simplestruct** data_array, int count); // use Structure.ByReference[]
-
-    // struct (by value) as return value or argument
-    // use Structure.ByValue
-    simplestruct myfunc();
-    void myfunc(simplestruct);
+// struct (by value) as return value or argument
+// use Structure.ByValue
+simplestruct myfunc();
+void myfunc(simplestruct);
+```
 
 If you need a `ByValue` or `ByReference` class, define them within your main `Structure` definition like this:
-
-    public class MyStructure extends Structure {
-      public static class ByValue extends MyStructure implements Structure.ByValue { }
-      public static class ByReference extends MyStructure implements Structure.ByReference { }
-    }
-
+```java
+public class MyStructure extends Structure {
+  public static class ByValue extends MyStructure implements Structure.ByValue { }
+  public static class ByReference extends MyStructure implements Structure.ByReference { }
+}
+```
 How do I read back a function's string result?
 ----------------------------------------------
 
 Suppose you have a function:
+```c
+// Example A: Returns the number of characters written to the buffer
+int getString(char* buffer, int bufsize);
+// Example B: Returns the number of characters written to the buffer
+int getUnicodeString(wchar_t* buffer, int bufsize);
+```
+```java
+// Mapping A:
+int getString(byte[] buf, int bufsize);
+// Mapping B:
+int getUnicodeString(char[] buf, int bufsize);
 
-    // Example A: Returns the number of characters written to the buffer
-    int getString(char* buffer, int bufsize);
-    // Example B: Returns the number of characters written to the buffer
-    int getUnicodeString(wchar_t* buffer, int bufsize);
-    
-    // Mapping A:
-    int getString(byte[] buf, int bufsize);
-    // Mapping B:
-    int getUnicodeString(char[] buf, int bufsize);
-    
-    byte[] buf = new byte[256];
-    int len = getString(buf, buf.length);
-    String normalCString = Native.toString(buf);
-    String embeddedNULs = new String(buf, 0, len);
-
+byte[] buf = new byte[256];
+int len = getString(buf, buf.length);
+String normalCString = Native.toString(buf);
+String embeddedNULs = new String(buf, 0, len);
+```
 The native code is expecting a fixed-size buffer, which it will fill in with the requested data. A Java `String` is not appropriate here, since Strings are immutable. Nor is a Java `StringBuffer`, since the native code only fills the buffer and does not change its size. The appropriate argument type would be either `byte[]`, `Memory`, or an NIO Buffer, with the size of the object passed as the second argument. The method `Native.toString(byte[])` may then be used to convert the array of byte into a Java String.
-
-    // Example A: Returns a C string directly
-    const char* getString();
-    // Example B: Returns a wide character C string directly
-    const wchar_t* getString();
-
+```c
+// Example A: Returns a C string directly
+const char* getString();
+// Example B: Returns a wide character C string directly
+const wchar_t* getString();
+```
+     
 If the string is returned directly, your Java mapping can use the `String` or `WString` type as a return value (as appropriate).
 Note that if the native code allocates memory for the string, you should return `Pointer` instead so that you can free the memory
 at some later point.
-
-    // Mapping A
-    String getString();
-    // Mapping B
-    WString getString();
-    // Mapping C, if native code allocates memory
-    // Use Pointer.getString(0) to extract the String data,
-    // then call the recommended native method with the Pointer
-    // value to free the memory
-    Pointer getString();
-
+```java
+// Mapping A
+String getString();
+// Mapping B
+WString getString();
+// Mapping C, if native code allocates memory
+// Use Pointer.getString(0) to extract the String data,
+// then call the recommended native method with the Pointer
+// value to free the memory
+Pointer getString();
+```
 My library sometimes causes a VM crash
 --------------------------------------
 
@@ -145,11 +170,6 @@ Does JNA work with J2ME/Windows CE/Mobile?
 
 There is an implementation included in the regular JNA distribution built with cegcc and tested against phoneME.
 
-I need to use a COM/OCX/ActiveX object. Can JNA do that?
---------------------------------------------------------
-
-Not really. Try JACOB or com4j, both of which can parse a COM interface definition and generate a Java object to match it.  JNAerator is also working on generating COM bindings.
-
 Why does the VM sometimes crash in my shutdown hook on Windows?
 ---------------------------------------------------------------
 
@@ -175,4 +195,48 @@ You might expect a speedup of about an order of magnitude moving to JNA direct m
 
 JNA COM support
 ---------------
-There is a new implementation to support COM in conjunction with JNA directly. The development is relatively young, honestly the development has been finished just end of February '13. Please note that fact if you use the COM support in JNA, there could be things missing or not absolutely tested or still not working. Please use the jna user group to report your experience with the JNA Com support. 
+There are two implementations to support COM in conjunction with JNA directly.
+Please see the [PlatformLibrary](https://github.com/java-native-access/jna/blob/master/www/PlatformLibrary.md)
+documentation for more information and use the jna user group to report your 
+experience with the JNA COM support. 
+
+Additional resource that should be checked are JACOB or com4j, both of which can 
+parse a COM interface definition and generate a Java object to match it.  
+JNAerator is also working on generating COM bindings.
+
+JNA on Android
+--------------
+
+To use JNA on Android add the following dependency to gradle (note the `@aar`):
+
+```
+compile 'net.java.dev.jna:jna:4.4.0@aar'
+```
+
+If you're using Proguard, you should also add the following to your Proguard rules:
+
+```
+-dontwarn java.awt.*
+-keep class com.sun.jna.* { *; }
+-keepclassmembers class * extends com.sun.jna.* { public *; }
+```
+
+On Windows, MSDN shows that TheFuncName is in somelib.dll but JNA throws UnsatisifiedLinkError: The specified procedure could not be found.
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+Make sure you're on a version of Windows that contains the function.
+
+Some windows functions are documented as TheFuncName but are actually implemented 
+as TheFuncNameA and TheFuncNameW in the library. You can see this with 
+Dependency Walker (depends.exe) from http://dependencywalker.com when you open 
+the DLL. 
+
+The convention is, that the “A” suffix indicates a function expecting ANSI/
+windows code page encoding and a “W” suffix indicates a function expecting wide
+(unicode, UTF-16) strings.
+
+JNA won't automatically resolve one or the other variant. You should use a
+a combination of TypeMapper and FunctionMapper (see 
+`com.sun.jna.win32.W32APIOptions.DEFAULT_OPTIONS`) so that you can leave off the 
+“-A” or “-W” suffix (you never need to use both simultaneously) and use 
+“String” rather than explicit “WString”.

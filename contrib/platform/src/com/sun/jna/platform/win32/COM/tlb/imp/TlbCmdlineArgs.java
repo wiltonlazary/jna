@@ -1,21 +1,32 @@
 /* Copyright (c) 2013 Tobias Wolf, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32.COM.tlb.imp;
 
 import java.util.Hashtable;
 
-public class TlbCmdlineArgs extends Hashtable<String, String> implements
-        TlbConst {
+public class TlbCmdlineArgs extends Hashtable<String, String> implements TlbConst {
+    private static final long serialVersionUID = 1L;
 
     public TlbCmdlineArgs(String[] args) {
         this.readCmdArgs(args);
@@ -23,7 +34,7 @@ public class TlbCmdlineArgs extends Hashtable<String, String> implements
 
     public int getIntParam(String key) {
         String param = this.getRequiredParam(key);
-        return new Integer(param).intValue();
+        return Integer.parseInt(param);
     }
 
     public String getParam(String key) {
@@ -43,10 +54,15 @@ public class TlbCmdlineArgs extends Hashtable<String, String> implements
         if (args.length < 2)
             this.showCmdHelp();
 
-        for (int i = 0; i < args.length; i++) {
-            String cmd = args[i];
-            if (cmd.startsWith("-")) {
-                this.put(args[i].substring(1), args[i + 1]);
+        for (int i = 0; i < args.length;) {
+            String cmdName = args[i];
+            String cmdValue = args[i+1];
+            if (cmdName.startsWith("-") && !cmdValue.startsWith("-")) {
+                this.put(cmdName.substring(1), cmdValue);
+                i+=2;
+            }else {
+                this.showCmdHelp();
+                break;
             }
         }
     }
@@ -65,7 +81,7 @@ public class TlbCmdlineArgs extends Hashtable<String, String> implements
         else
             return BINDING_MODE_VTABLE;
     }
-    
+
     public void showCmdHelp() {
         String helpStr = "usage: TlbImp [-tlb.id -tlb.major.version -tlb.minor.version] [-tlb.file] [-bind.mode vTable, dispId] [-output.dir]"
                 + CRCR

@@ -1,12 +1,24 @@
-/* This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+/*
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32;
 
@@ -15,6 +27,7 @@ import java.io.File;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
+
 import junit.framework.TestCase;
 
 public class VersionTest extends TestCase {
@@ -25,33 +38,35 @@ public class VersionTest extends TestCase {
 
     public void testGetFileVersion() {
         String systemRoot = System.getenv("SystemRoot");
-        File file = new File(systemRoot + "\\regedit.exe");
+        assertNotNull("Missing system root environment variable", systemRoot);
+        File file = new File(systemRoot + File.separator + "regedit.exe");
         if (!file.exists()) {
             fail("Can't obtain file version, file " + file + " is missing");
         }
 
-        int size = Version.INSTANCE.GetFileVersionInfoSize(file.getAbsolutePath(), null);
-        assertTrue(size > 0);
+        String filePath = file.getAbsolutePath();
+        int size = Version.INSTANCE.GetFileVersionInfoSize(filePath, null);
+        assertTrue("GetFileVersionInfoSize(" + filePath + ")", size > 0);
 
         Pointer buffer = Kernel32.INSTANCE.LocalAlloc(WinBase.LMEM_ZEROINIT, size);
-        assertTrue(!buffer.equals(Pointer.NULL));
+        assertTrue("LocalAlloc(" + size + ")", !buffer.equals(Pointer.NULL));
 
-        try
-        {
-            assertTrue(Version.INSTANCE.GetFileVersionInfo(file.getAbsolutePath(), 0, size, buffer));
+        try {
+            assertTrue("GetFileVersionInfo(" + filePath + ")",
+                    Version.INSTANCE.GetFileVersionInfo(filePath, 0, size, buffer));
 
             IntByReference outputSize = new IntByReference();
             PointerByReference pointer = new PointerByReference();
 
-            assertTrue(Version.INSTANCE.VerQueryValue(buffer, "\\", pointer, outputSize));
+            assertTrue("VerQueryValue",
+                    Version.INSTANCE.VerQueryValue(buffer, "\\", pointer, outputSize));
 
-            VerRsrc.VS_FIXEDFILEINFO fixedFileInfo = new VerRsrc.VS_FIXEDFILEINFO(pointer.getValue());
-            assertTrue(fixedFileInfo.dwFileVersionLS.longValue() > 0);
-            assertTrue(fixedFileInfo.dwFileVersionMS.longValue() > 0);
-        }
-        finally
-        {
-            Kernel32.INSTANCE.GlobalFree(buffer);
+            VerRsrc.VS_FIXEDFILEINFO fixedFileInfo =
+                    new VerRsrc.VS_FIXEDFILEINFO(pointer.getValue());
+            assertTrue("dwFileVersionLS", fixedFileInfo.dwFileVersionLS.longValue() > 0);
+            assertTrue("dwFileVersionMS", fixedFileInfo.dwFileVersionMS.longValue() > 0);
+        } finally {
+            Kernel32Util.freeGlobalMemory(buffer);
         }
     }
 }

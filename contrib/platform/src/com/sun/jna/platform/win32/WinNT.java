@@ -1,32 +1,41 @@
 /* Copyright (c) 2007 Timothy Wall, All Rights Reserved
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * The contents of this file is dual-licensed under 2
+ * alternative Open Source/Free licenses: LGPL 2.1 or later and
+ * Apache License 2.0. (starting with JNA version 4.0.0).
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * You can freely decide which license you want to apply to
+ * the project.
+ *
+ * You may obtain a copy of the LGPL License at:
+ *
+ * http://www.gnu.org/licenses/licenses.html
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "LGPL2.1".
+ *
+ * You may obtain a copy of the Apache License at:
+ *
+ * http://www.apache.org/licenses/
+ *
+ * A copy is also included in the downloadable source code package
+ * containing JNA, in file "AL2.0".
  */
 package com.sun.jna.platform.win32;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import com.sun.jna.FromNativeContext;
+import com.sun.jna.IntegerType;
 import com.sun.jna.Memory;
+import com.sun.jna.Native;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.PointerType;
 import com.sun.jna.Structure;
+import com.sun.jna.Structure.FieldOrder;
+import com.sun.jna.platform.win32.WinNT.PSID;
 import com.sun.jna.Union;
 import com.sun.jna.ptr.ByReference;
-
-import com.sun.jna.platform.win32.WinNT.SYSTEM_LOGICAL_PROCESSOR_INFORMATION;
-import com.sun.jna.platform.win32.WinNT.LOGICAL_PROCESSOR_RELATIONSHIP;
+import com.sun.jna.win32.StdCallLibrary.StdCallCallback;
 
 /**
  * This module defines the 32-Bit Windows types and constants that are defined
@@ -39,6 +48,15 @@ import com.sun.jna.platform.win32.WinNT.LOGICAL_PROCESSOR_RELATIONSHIP;
 @SuppressWarnings("serial")
 public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
 
+    int MINCHAR     = 0x80;
+    int MAXCHAR     = 0x7f;
+    int MINSHORT    = 0x8000;
+    int MAXSHORT    = 0x7fff;
+    int MINLONG     = 0x80000000;
+    int MAXLONG     = 0x7fffffff;
+    int MAXBYTE     = 0xff;
+    int MAXWORD     = 0xffff;
+    int MAXDWORD    = 0xffffffff;
     //
     // The following are masks for the predefined standard access types
     //
@@ -56,6 +74,10 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
     int STANDARD_RIGHTS_ALL = 0x001F0000;
 
     int SPECIFIC_RIGHTS_ALL = 0x0000FFFF;
+
+    int MUTANT_QUERY_STATE = 0x0001;
+    int MUTANT_ALL_ACCESS = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE
+            | MUTANT_QUERY_STATE;
 
     //
     // Token Specific Access Rights.
@@ -151,6 +173,11 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
     int THREAD_ALL_ACCESS = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0x3FF;
 
     /**
+     * Flag identifying hyperthreading / simultaneous multithreading (SMT)
+     */
+    int LTP_PC_SMT = 0x1;
+
+    /**
      * The SECURITY_IMPERSONATION_LEVEL enumeration type contains values that
      * specify security impersonation levels. Security impersonation levels
      * govern the degree to which a server process can act on behalf of a client
@@ -238,6 +265,7 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
      * The LUID_AND_ATTRIBUTES structure represents a locally unique identifier
      * (LUID) and its attributes.
      */
+    @FieldOrder({"Luid", "Attributes"})
     public static class LUID_AND_ATTRIBUTES extends Structure {
         /**
          * Specifies an LUID value.
@@ -251,11 +279,8 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
          */
         public DWORD Attributes;
 
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "Luid", "Attributes" });
-        }
-
         public LUID_AND_ATTRIBUTES() {
+            super();
         }
 
         public LUID_AND_ATTRIBUTES(LUID luid, DWORD attributes) {
@@ -268,20 +293,8 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
      * The SID_AND_ATTRIBUTES structure represents a security identifier (SID)
      * and its attributes. SIDs are used to uniquely identify users or groups.
      */
+    @FieldOrder({"Sid", "Attributes"})
     public static class SID_AND_ATTRIBUTES extends Structure {
-
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "Sid", "Attributes" });
-        }
-
-        public SID_AND_ATTRIBUTES() {
-            super();
-        }
-
-        public SID_AND_ATTRIBUTES(Pointer memory) {
-            super(memory);
-        }
-
         /**
          * Pointer to a SID structure.
          */
@@ -292,17 +305,28 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
          * flags. Its meaning depends on the definition and use of the SID.
          */
         public int Attributes;
+
+        public SID_AND_ATTRIBUTES() {
+            super();
+        }
+
+        public SID_AND_ATTRIBUTES(Pointer memory) {
+            super(memory);
+        }
     }
 
     /**
      * The TOKEN_OWNER structure contains the default owner security identifier
      * (SID) that will be applied to newly created objects.
      */
+    @FieldOrder({"Owner"})
     public static class TOKEN_OWNER extends Structure {
-
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "Owner" });
-        }
+        /**
+         * Pointer to a SID structure representing a user who will become the
+         * owner of any objects created by a process using this access token.
+         * The SID must be one of the user or group SIDs already in the token.
+         */
+        public PSID.ByReference Owner; // PSID
 
         public TOKEN_OWNER() {
             super();
@@ -316,21 +340,12 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
             super(memory);
             read();
         }
-
-        /**
-         * Pointer to a SID structure representing a user who will become the
-         * owner of any objects created by a process using this access token.
-         * The SID must be one of the user or group SIDs already in the token.
-         */
-        public PSID.ByReference Owner; // PSID
     }
 
+    @FieldOrder({"sid"})
     public static class PSID extends Structure {
         public static class ByReference extends PSID implements Structure.ByReference { }
-
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "sid" });
-        }
+        public Pointer sid;
 
         public PSID() {
             super();
@@ -356,7 +371,9 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
             return getPointer().getByteArray(0, len);
         }
 
-        public Pointer sid;
+        public String getSidString() {
+            return Advapi32Util.convertSidToStringSid(this);
+        }
     }
 
     public static class PSIDByReference extends ByReference {
@@ -365,7 +382,7 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         }
 
         public PSIDByReference(PSID h) {
-            super(Pointer.SIZE);
+            super(Native.POINTER_SIZE);
             setValue(h);
         }
 
@@ -388,11 +405,14 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
      * The TOKEN_USER structure identifies the user associated with an access
      * token.
      */
+    @FieldOrder({"User"})
     public static class TOKEN_USER extends Structure {
-
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "User" });
-        }
+        /**
+         * Specifies a SID_AND_ATTRIBUTES structure representing the user
+         * associated with the access token. There are currently no attributes
+         * defined for user security identifiers (SIDs).
+         */
+        public SID_AND_ATTRIBUTES User;
 
         public TOKEN_USER() {
             super();
@@ -406,24 +426,46 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         public TOKEN_USER(int size) {
             super(new Memory(size));
         }
+    }
 
+    /**
+     * The TOKEN_PRIMARY_GROUP structure specifies a group security identifier (SID)
+     * for an access token.
+     */
+    @FieldOrder({ "PrimaryGroup" })
+    public static class TOKEN_PRIMARY_GROUP extends Structure {
         /**
-         * Specifies a SID_AND_ATTRIBUTES structure representing the user
-         * associated with the access token. There are currently no attributes
-         * defined for user security identifiers (SIDs).
+         * A pointer to a SID structure representing a group that will become the
+         * primary group of any objects created by a process using this access token.
+         * The SID must be one of the group SIDs already in the token.
          */
-        public SID_AND_ATTRIBUTES User;
+        public PSID.ByReference PrimaryGroup;
+
+        public TOKEN_PRIMARY_GROUP() {
+            super();
+        }
+
+        public TOKEN_PRIMARY_GROUP(Pointer memory) {
+            super(memory);
+            read();
+        }
+
+        public TOKEN_PRIMARY_GROUP(int size) {
+            super(new Memory(size));
+        }
     }
 
     /**
      * The TOKEN_GROUPS structure contains information about the group security
      * identifiers (SIDs) in an access token.
      */
+    @FieldOrder({"GroupCount", "Group0"})
     public static class TOKEN_GROUPS extends Structure {
-
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "GroupCount", "Group0" });
-        }
+        /**
+         * Specifies the number of groups in the access token.
+         */
+        public int GroupCount;
+        public SID_AND_ATTRIBUTES Group0;
 
         public TOKEN_GROUPS() {
             super();
@@ -439,14 +481,9 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         }
 
         /**
-         * Specifies the number of groups in the access token.
-         */
-        public int GroupCount;
-        public SID_AND_ATTRIBUTES Group0;
-
-        /**
          * Specifies an array of SID_AND_ATTRIBUTES structures that contain a
          * set of SIDs and corresponding attributes.
+         * @return attributes
          */
         public SID_AND_ATTRIBUTES[] getGroups() {
             return (SID_AND_ATTRIBUTES[]) Group0.toArray(GroupCount);
@@ -457,15 +494,11 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
      * Specifies a set of privileges. <br>
      * It is also used to indicate which, if any, privileges are held by a user or group requesting access to an object.
      */
+    @FieldOrder({"PrivilegeCount", "Control", "Privileges"})
     public static class PRIVILEGE_SET extends Structure {
         public DWORD PrivilegeCount;
         public DWORD Control;
         public LUID_AND_ATTRIBUTES Privileges[];
-
-        @Override
-        protected List getFieldOrder() {
-            return Arrays.asList("PrivilegeCount", "Control", "Privileges");
-        }
 
         public PRIVILEGE_SET() {
             this(0);
@@ -481,7 +514,9 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
             }
         }
 
-        /** Initialize a TOKEN_PRIVILEGES instance from initialized memory. */
+        /** Initialize a TOKEN_PRIVILEGES instance from initialized memory.
+         * @param p base address
+         */
         public PRIVILEGE_SET(Pointer p) {
             super(p);
             final int count = p.getInt(0);
@@ -497,6 +532,7 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
      * The TOKEN_PRIVILEGES structure contains information about a set of
      * privileges for an access token.
      */
+    @FieldOrder({"PrivilegeCount", "Privileges"})
     public static class TOKEN_PRIVILEGES extends Structure {
         /**
          * This must be set to the number of entries in the Privileges array.
@@ -508,10 +544,6 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
          * contains the LUID and attributes of a privilege.
          */
         public LUID_AND_ATTRIBUTES Privileges[];
-
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "PrivilegeCount", "Privileges" });
-        }
 
         /** Creates an empty instance with no privileges. */
         public TOKEN_PRIVILEGES() {
@@ -526,7 +558,9 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
             Privileges = new LUID_AND_ATTRIBUTES[nbOfPrivileges];
         }
 
-        /** Initialize a TOKEN_PRIVILEGES instance from initialized memory. */
+        /** Initialize a TOKEN_PRIVILEGES instance from initialized memory.
+         * @param p base address
+         */
         public TOKEN_PRIVILEGES(Pointer p) {
             super(p);
             int count = p.getInt(0);
@@ -650,14 +684,99 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
     // AccessSystemAcl access type
     //
 
-    int ACCESS_SYSTEM_SECURITY = 0x01000000;
+    int ACCESS_SYSTEM_SECURITY             = 0x01000000;
 
-    int PAGE_READONLY = 0x02;
-    int PAGE_READWRITE = 0x04;
+    /**
+     * Pages in the region become guard pages. <br>
+     * Any attempt to access a guard page causes the system to raise a
+     * STATUS_GUARD_PAGE_VIOLATION exception and turn off the guard page status.
+     * <br>
+     * Guard pages thus act as a one-time access alarm. <br>
+     * For more information, see Creating Guard Pages. <br>
+     * When an access attempt leads the system to turn off guard page status,
+     * the underlying page protection takes over.<br>
+     * If a guard page exception occurs during a system service, the service
+     * typically returns a failure status indicator. <br>
+     * This value cannot be used with PAGE_NOACCESS. This flag is not supported
+     * by the CreateFileMapping function.
+     *
+     * @see <a href=
+     *      "https://msdn.microsoft.com/en-us/library/windows/desktop/aa366786(v=vs.85).aspx">
+     *      MSDN</a>
+     */
+    int PAGE_GUARD                         = 0x100;
+
+    /**
+     * Disables all access to the committed region of pages.<br>
+     * An attempt to read from, write to, or execute the committed region
+     * results in an access violation.<br>
+     * This flag is not supported by the CreateFileMapping function.
+     *
+     * @see <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa366786(v=vs.85).aspx">MSDN</a>
+     */
+    int PAGE_NOACCESS                      = 0x01;
+
+    /**
+     * Enables read-only access to the committed region of pages.<br>
+     * An attempt to write to the committed region results in an access
+     * violation. <br>
+     * If Data Execution Prevention is enabled, an attempt to execute code in
+     * the committed region results in an access violation.
+     *
+     * @see <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa366786(v=vs.85).aspx">MSDN</a>
+     */
+    int PAGE_READONLY                      = 0x02;
+
+    /**
+     * Enables read-only or read/write access to the committed region of pages. <br>
+     * If Data Execution Prevention is enabled, attempting to execute code in
+     * the committed region results in an access violation.
+     *
+     * @see <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa366786(v=vs.85).aspx">MSDN</a>
+     */
+    int PAGE_READWRITE                     = 0x04;
+
+    /**
+     * Enables read-only or copy-on-write access to a mapped view of a file
+     * mapping object. An attempt to write to a committed copy-on-write page
+     * results in a private copy of the page being made for the process. The
+     * private page is marked as PAGE_READWRITE, and the change is written to
+     * the new page. If Data Execution Prevention is enabled, attempting to
+     * execute code in the committed region results in an access violation.
+     *
+     * @see <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa366786(v=vs.85).aspx"> MSDN</a>
+     */
     int PAGE_WRITECOPY = 0x08;
-    int PAGE_EXECUTE = 0x10;
-    int PAGE_EXECUTE_READ = 0x20;
-    int PAGE_EXECUTE_READWRITE = 0x40;
+
+    /**
+     * Enables execute access to the committed region of pages. An attempt to
+     * write to the committed region results in an access violation. This flag
+     * is not supported by the CreateFileMapping function.
+     *
+     * @see <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa366786(v=vs.85).aspx">MSDN</a>
+     */
+    int PAGE_EXECUTE                       = 0x10;
+
+    /**
+     * Enables execute or read-only access to the committed region of pages. An
+     * attempt to write to the committed region results in an access violation.
+     * Windows Server 2003 and Windows XP: This attribute is not supported by
+     * the CreateFileMapping function until Windows XP with SP2 and Windows
+     * Server 2003 with SP1.
+     *
+     * @see <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa366786(v=vs.85).aspx">MSDN</a>
+     */
+    int PAGE_EXECUTE_READ                  = 0x20;
+
+    /**
+     * Enables execute, read-only, or read/write access to the committed region
+     * of pages. Windows Server 2003 and Windows XP: This attribute is not
+     * supported by the CreateFileMapping function until Windows XP with SP2 and
+     * Windows Server 2003 with SP1.
+     *
+     * @see <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa366786(v=vs.85).aspx">MSDN</a>
+     */
+    int PAGE_EXECUTE_READWRITE             = 0x40;
 
     int SECTION_QUERY = 0x0001;
     int SECTION_MAP_WRITE = 0x0002;
@@ -718,6 +837,38 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
     int FILE_READ_ONLY_VOLUME = 0x00080000;
     int FILE_SEQUENTIAL_WRITE_ONCE = 0x00100000;
     int FILE_SUPPORTS_TRANSACTIONS = 0x00200000;
+    // NOTE: These values are not supported until Windows Server 2008 R2 and Windows 7
+    int FILE_SUPPORTS_HARD_LINKS = 0x00400000;
+    int FILE_SUPPORTS_EXTENDED_ATTRIBUTES = 0x00800000;
+    int FILE_SUPPORTS_OPEN_BY_FILE_ID = 0x01000000;
+    int FILE_SUPPORTS_USN_JOURNAL = 0x02000000;
+
+    // Reparse point tags
+    int IO_REPARSE_TAG_MOUNT_POINT              = 0xA0000003;
+    int IO_REPARSE_TAG_HSM                      = 0xC0000004;
+    int IO_REPARSE_TAG_HSM2                     = 0x80000006;
+    int IO_REPARSE_TAG_SIS                      = 0x80000007;
+    int IO_REPARSE_TAG_WIM                      = 0x80000008;
+    int IO_REPARSE_TAG_CSV                      = 0x80000009;
+    int IO_REPARSE_TAG_DFS                      = 0x8000000A;
+    int IO_REPARSE_TAG_SYMLINK                  = 0xA000000C;
+    int IO_REPARSE_TAG_DFSR                     = 0x80000012;
+
+    // The controllable aspects of the DefineDosDevice function.
+    // see https://msdn.microsoft.com/en-us/library/windows/desktop/aa363904(v=vs.85).aspx
+    int DDD_RAW_TARGET_PATH = 0x00000001;
+    int DDD_REMOVE_DEFINITION = 0x00000002;
+    int DDD_EXACT_MATCH_ON_REMOVE = 0x00000004;
+    int DDD_NO_BROADCAST_SYSTEM = 0x00000008;
+
+    int COMPRESSION_FORMAT_NONE          = 0x0000;
+    int COMPRESSION_FORMAT_DEFAULT       = 0x0001;
+    int COMPRESSION_FORMAT_LZNT1         = 0x0002;
+    int COMPRESSION_FORMAT_XPRESS        = 0x0003;
+    int COMPRESSION_FORMAT_XPRESS_HUFF   = 0x0004;
+    int COMPRESSION_ENGINE_STANDARD      = 0x0000;
+    int COMPRESSION_ENGINE_MAXIMUM       = 0x0100;
+    int COMPRESSION_ENGINE_HIBER         = 0x0200;
 
     /**
      * The FILE_NOTIFY_INFORMATION structure describes the changes found by the
@@ -727,6 +878,7 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
      * block of result memory rather than something that stands alone or is used
      * for input.
      */
+    @FieldOrder({"NextEntryOffset", "Action", "FileNameLength", "FileName"})
     public static class FILE_NOTIFY_INFORMATION extends Structure {
         public int NextEntryOffset;
         public int Action;
@@ -734,11 +886,8 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         // filename is not nul-terminated, so we can't use a String/WString
         public char[] FileName = new char[1];
 
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "NextEntryOffset", "Action", "FileNameLength", "FileName" });
-        }
-
         private FILE_NOTIFY_INFORMATION() {
+            super();
         }
 
         public FILE_NOTIFY_INFORMATION(int size) {
@@ -752,11 +901,13 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         /**
          * WARNING: this filename may be either the short or long form of the
          * filename.
+         * @return filename
          */
         public String getFilename() {
             return new String(FileName, 0, FileNameLength / 2);
         }
 
+        @Override
         public void read() {
             // avoid reading filename until we know how long it is
             FileName = new char[0];
@@ -796,9 +947,9 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
 
     int KEY_EXECUTE = KEY_READ & (~SYNCHRONIZE);
 
-    int KEY_ALL_ACCESS = STANDARD_RIGHTS_ALL | KEY_QUERY_VALUE | KEY_SET_VALUE
+    int KEY_ALL_ACCESS = ((STANDARD_RIGHTS_ALL | KEY_QUERY_VALUE | KEY_SET_VALUE
             | KEY_CREATE_SUB_KEY | KEY_ENUMERATE_SUB_KEYS | KEY_NOTIFY
-            | KEY_CREATE_LINK & (~SYNCHRONIZE);
+            | KEY_CREATE_LINK) & (~SYNCHRONIZE));
 
     //
     // Open/Create Options
@@ -1007,45 +1158,98 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
      * A 64-bit value that is guaranteed to be unique on the operating system
      * that generated it until the system is restarted.
      */
+    @FieldOrder({"LowPart", "HighPart"})
     public static class LUID extends Structure {
         public int LowPart;
         public int HighPart;
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "LowPart", "HighPart" });
-        }
     }
 
     /**
      * A 64-bit integer;
      */
-    public static class LARGE_INTEGER extends Structure {
+    @FieldOrder({"u"})
+    public static class LARGE_INTEGER extends Structure implements Comparable<LARGE_INTEGER> {
         public static class ByReference extends LARGE_INTEGER implements
                 Structure.ByReference {
         }
 
+        @FieldOrder({"LowPart", "HighPart"})
         public static class LowHigh extends Structure {
             public DWORD LowPart;
             public DWORD HighPart;
-            protected List getFieldOrder() {
-                return Arrays.asList(new String[] { "LowPart", "HighPart" });
+
+            public LowHigh() {
+                super();
+            }
+
+            public LowHigh(long value) {
+                this(new DWORD(value & 0xFFFFFFFFL),  new DWORD((value >> 32) & 0xFFFFFFFFL));
+            }
+
+            public LowHigh(DWORD low, DWORD high) {
+                LowPart = low;
+                HighPart = high;
+            }
+
+            public long longValue() {
+                long loValue = LowPart.longValue();
+                long hiValue = HighPart.longValue();
+                return ((hiValue << 32) & 0xFFFFFFFF00000000L) | (loValue & 0xFFFFFFFFL);
+            }
+
+            @Override
+            public String toString() {
+                if ((LowPart == null) || (HighPart == null)) {
+                    return "null";
+                } else {
+                    return Long.toString(longValue());
+                }
             }
         }
 
         public static class UNION extends Union {
             public LowHigh lh;
             public long value;
+
+            public UNION() {
+                super();
+            }
+
+            public UNION(long value) {
+                this.value = value;
+                this.lh = new LowHigh(value);
+            }
+
+            @Override
+            public void read() {
+                readField("lh");
+                readField("value");
+            }
+
+            public long longValue() {
+                return value;
+            }
+
+            @Override
+            public String toString() {
+                return Long.toString(longValue());
+            }
         }
 
         public UNION u;
 
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "u" });
+        public LARGE_INTEGER() {
+            super();
+        }
+
+        public LARGE_INTEGER(long value) {
+            this.u = new UNION(value);
         }
 
         /**
          * Low DWORD.
          *
-         * @return DWORD.
+         * @return Low DWORD value
          */
         public DWORD getLow() {
             return u.lh.LowPart;
@@ -1054,7 +1258,7 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         /**
          * High DWORD.
          *
-         * @return DWORD.
+         * @return High DWORD value
          */
         public DWORD getHigh() {
             return u.lh.HighPart;
@@ -1063,10 +1267,64 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         /**
          * 64-bit value.
          *
-         * @return 64-bit value.
+         * @return The 64-bit value.
          */
         public long getValue() {
             return u.value;
+        }
+
+        @Override
+        public int compareTo(LARGE_INTEGER other) {
+            return compare(this, other);
+        }
+
+        @Override
+        public String toString() {
+            return (u == null) ? "null" : Long.toString(getValue());
+        }
+
+        /**
+         * Compares 2 LARGE_INTEGER values -  - <B>Note:</B> a {@code null}
+         * value is considered <U>greater</U> than any non-{@code null} one
+         * (i.e., {@code null} values are &quot;pushed&quot; to the end
+         * of a sorted array / list of values)
+         *
+         * @param v1 The 1st value
+         * @param v2 The 2nd value
+         * @return 0 if values are equal (including if <U>both</U> are {@code null},
+         * negative if 1st value less than 2nd one, positive otherwise. <B>Note:</B>
+         * the comparison uses the {@link #getValue()}.
+         * @see IntegerType#compare(long, long)
+         */
+        public static int compare(LARGE_INTEGER v1, LARGE_INTEGER v2) {
+            if (v1 == v2) {
+                return 0;
+            } else if (v1 == null) {
+                return 1;   // v2 cannot be null or v1 == v2 would hold
+            } else if (v2 == null) {
+                return (-1);
+            } else {
+                return IntegerType.compare(v1.getValue(), v2.getValue());
+            }
+        }
+
+        /**
+         * Compares a LARGE_INTEGER value with a {@code long} one. <B>Note:</B> if
+         * the LARGE_INTEGER value is {@code null} then it is consider <U>greater</U>
+         * than any {@code long} value.
+         *
+         * @param v1 The {@link LARGE_INTEGER} value
+         * @param v2 The {@code long} value
+         * @return 0 if values are equal, negative if 1st value less than 2nd one,
+         * positive otherwise. <B>Note:</B> the comparison uses the {@link #getValue()}.
+         * @see IntegerType#compare(long, long)
+         */
+        public static int compare(LARGE_INTEGER v1, long v2) {
+            if (v1 == null) {
+                return 1;
+            } else {
+                return IntegerType.compare(v1.getValue(), v2);
+            }
         }
     }
 
@@ -1085,6 +1343,7 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         }
 
         /** Override to the appropriate object for INVALID_HANDLE_VALUE. */
+        @Override
         public Object fromNative(Object nativeValue, FromNativeContext context) {
             Object o = super.fromNative(nativeValue, context);
             if (WinBase.INVALID_HANDLE_VALUE.equals(o)) {
@@ -1093,12 +1352,18 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
             return o;
         }
 
+        @Override
         public void setPointer(Pointer p) {
             if (immutable) {
                 throw new UnsupportedOperationException("immutable reference");
             }
 
             super.setPointer(p);
+        }
+
+        @Override
+        public String toString() {
+            return String.valueOf(getPointer());
         }
     }
 
@@ -1111,7 +1376,7 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         }
 
         public HANDLEByReference(HANDLE h) {
-            super(Pointer.SIZE);
+            super(Native.POINTER_SIZE);
             setValue(h);
         }
 
@@ -1478,73 +1743,73 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         public static final int WinBuiltinTerminalServerLicenseServersSid = 60;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinBuiltinDCOMUsersSid = 61;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinBuiltinIUsersSid = 62;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinIUserSid = 63;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinBuiltinCryptoOperatorsSid = 64;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinUntrustedLabelSid = 65;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinLowLabelSid = 66;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinMediumLabelSid = 67;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinHighLabelSid = 68;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinSystemLabelSid = 69;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinWriteRestrictedCodeSid = 70;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinCreatorOwnerRightsSid = 71;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinCacheablePrincipalsGroupSid = 72;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinNonCacheablePrincipalsGroupSid = 73;
 
         /**
-	 *
-	 */
+         *
+         */
         public static final int WinEnterpriseReadonlyControllersSid = 74;
 
         /**
@@ -1579,6 +1844,7 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
      * build number, a platform identifier, and descriptive text about the
      * operating system. This structure is used with the GetVersionEx function.
      */
+    @FieldOrder({"dwOSVersionInfoSize", "dwMajorVersion", "dwMinorVersion", "dwBuildNumber", "dwPlatformId", "szCSDVersion"})
     public static class OSVERSIONINFO extends Structure {
         /**
          * Size of this data structure, in bytes. Set this member to
@@ -1612,10 +1878,6 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
          */
         public char szCSDVersion[];
 
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "dwOSVersionInfoSize", "dwMajorVersion", "dwMinorVersion", "dwBuildNumber", "dwPlatformId", "szCSDVersion" });
-        }
-
         public OSVERSIONINFO() {
             szCSDVersion = new char[128];
             dwOSVersionInfoSize = new DWORD(size()); // sizeof(OSVERSIONINFO)
@@ -1633,6 +1895,12 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
      * and information about product suites and the latest Service Pack
      * installed on the system.
      */
+    @FieldOrder({"dwOSVersionInfoSize",
+                "dwMajorVersion", "dwMinorVersion", "dwBuildNumber",
+                "dwPlatformId",
+                "szCSDVersion",
+                "wServicePackMajor", "wServicePackMinor",
+                "wSuiteMask", "wProductType", "wReserved"})
     public static class OSVERSIONINFOEX extends Structure {
         /**
          * The size of this data structure, in bytes.
@@ -1697,10 +1965,6 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
          */
         public byte wReserved;
 
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "dwOSVersionInfoSize", "dwMajorVersion", "dwMinorVersion", "dwBuildNumber", "dwPlatformId", "szCSDVersion", "wServicePackMajor", "wServicePackMinor", "wSuiteMask", "wProductType", "wReserved"});
-        }
-
         public OSVERSIONINFOEX() {
             szCSDVersion = new char[128];
             dwOSVersionInfoSize = new DWORD(size()); // sizeof(OSVERSIONINFOEX)
@@ -1709,6 +1973,57 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         public OSVERSIONINFOEX(Pointer memory) {
             super(memory);
             read();
+        }
+
+        /**
+         * @return The major version number of the operating system.
+         */
+        public int getMajor() {
+            return dwMajorVersion.intValue();
+        }
+
+        /**
+         * @return The minor version number of the operating system.
+         */
+        public int getMinor() {
+            return dwMinorVersion.intValue();
+        }
+
+        /**
+         * @return The build number of the operating system.
+         */
+        public int getBuildNumber() {
+            return dwBuildNumber.intValue();
+        }
+
+        /**
+         * @return  The operating system platform. This member can be VER_PLATFORM_WIN32_NT.
+         */
+        public int getPlatformId() {
+            return dwPlatformId.intValue();
+        }
+
+        /**
+         * @return String, such as "Service Pack 3", that indicates the latest
+         *         Service Pack installed on the system.<br>
+         *         If no Service Pack has been installed, the string is empty.
+         */
+        public String getServicePack() {
+            return Native.toString(szCSDVersion);
+        }
+
+        /**
+         * @return A bit mask that identifies the product suites available on the system.
+         */
+        public int getSuiteMask() {
+            return wSuiteMask.intValue();
+        }
+
+        /**
+         * @return Any additional information about the system.
+         */
+        public byte getProductType() {
+            return wProductType;
         }
     }
 
@@ -1739,6 +2054,23 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
     int VER_PLATFORM_WIN32s = 0;
     int VER_PLATFORM_WIN32_WINDOWS = 1;
     int VER_PLATFORM_WIN32_NT = 2;
+
+    /*
+     * WIN32_WINNT version constants
+     */
+    short WIN32_WINNT_NT4 = 0x0400; // Windows NT 4.0
+    short WIN32_WINNT_WIN2K = 0x0500; // Windows 2000
+    short WIN32_WINNT_WINXP = 0x0501; // Windows XP
+    short WIN32_WINNT_WS03 = 0x0502; // Windows Server 2003
+    short WIN32_WINNT_WIN6 = 0x0600; // Windows Vista
+    short WIN32_WINNT_VISTA = 0x0600; // Windows Vista
+    short WIN32_WINNT_WS08 = 0x0600; // Windows Server 2008
+    short WIN32_WINNT_LONGHORN = 0x0600; // Windows Vista
+    short WIN32_WINNT_WIN7 = 0x0601; // Windows 7
+    short WIN32_WINNT_WIN8 = 0x0602; // Windows 8
+    short WIN32_WINNT_WINBLUE = 0x0603; // Windows 8.1
+    short WIN32_WINNT_WINTHRESHOLD = 0x0A00; // Windows 10
+    short WIN32_WINNT_WIN10 = 0x0A00; // Windows 10
 
     /**
      * Read the records sequentially. If this is the first read operation, the
@@ -1799,6 +2131,10 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
      * The EVENTLOGRECORD structure contains information about an event record
      * returned by the ReadEventLog function.
      */
+    @FieldOrder({"Length", "Reserved", "RecordNumber", "TimeGenerated", "TimeWritten",
+                "EventID", "EventType", "NumStrings", "EventCategory", "ReservedFlags",
+                "ClosingRecordNumber", "StringOffset", "UserSidLength", "UserSidOffset",
+                "DataLength", "DataOffset"})
     public static class EVENTLOGRECORD extends Structure {
         /**
          * Size of this event record, in bytes. Note that this value is stored
@@ -1902,11 +2238,8 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
          */
         public DWORD DataOffset;
 
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "Length", "Reserved", "RecordNumber", "TimeGenerated", "TimeWritten", "EventID", "EventType", "NumStrings", "EventCategory", "ReservedFlags", "ClosingRecordNumber", "StringOffset", "UserSidLength", "UserSidOffset", "DataLength", "DataOffset"});
-        }
-
         public EVENTLOGRECORD() {
+            super();
         }
 
         public EVENTLOGRECORD(Pointer p) {
@@ -1930,6 +2263,25 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
     int SERVICE_INTERACTIVE_PROCESS = 0x00000100;
     int SERVICE_TYPE_ALL = SERVICE_WIN32 | SERVICE_ADAPTER | SERVICE_DRIVER
             | SERVICE_INTERACTIVE_PROCESS;
+
+    //
+    // Start Type
+    //
+
+    int SERVICE_BOOT_START   = 0x00000000;
+    int SERVICE_SYSTEM_START = 0x00000001;
+    int SERVICE_AUTO_START   = 0x00000002;
+    int SERVICE_DEMAND_START = 0x00000003;
+    int SERVICE_DISABLED     = 0x00000004;
+
+    //
+    // Error control type
+    //
+    int SERVICE_ERROR_IGNORE   = 0x00000000;
+    int SERVICE_ERROR_NORMAL   = 0x00000001;
+    int SERVICE_ERROR_SEVERE   = 0x00000002;
+    int SERVICE_ERROR_CRITICAL = 0x00000003;
+
     int STATUS_PENDING = 0x00000103;
 
     // Privilege Constants
@@ -1969,7 +2321,124 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
     int SE_PRIVILEGE_REMOVED = 0X00000004;
     int SE_PRIVILEGE_USED_FOR_ACCESS = 0x80000000;
 
+    /** Required to create a process. */
+    int PROCESS_CREATE_PROCESS = 0x0080;
+
+    /** Required to create a thread. */
+    int PROCESS_CREATE_THREAD = 0x0002;
+
+    /**
+     * Required to duplicate a handle using
+     * {@link Kernel32#DuplicateHandle}
+     * .
+     */
+    int PROCESS_DUP_HANDLE = 0x0040;
+
+    /**
+     * All possible access rights for a process object. Windows Server 2003 and
+     * Windows XP: The size of the PROCESS_ALL_ACCESS flag increased on Windows
+     * Server 2008 and Windows Vista. <br>
+     * If an application compiled for Windows Server 2008 and Windows Vista is
+     * run on Windows Server 2003 or Windows XP, the PROCESS_ALL_ACCESS flag is
+     * too large and the function specifying this flag fails with
+     * ERROR_ACCESS_DENIED.<br>
+     * To avoid this problem, specify the minimum set of access rights required
+     * for the operation.<br>
+     * If PROCESS_ALL_ACCESS must be used, set _WIN32_WINNT to the minimum
+     * operating system targeted by your application (for example, #define
+     * _WIN32_WINNT _WIN32_WINNT_WINXP).<br>
+     * For more information, see Using the Windows Headers.
+     *
+     * @see <a href="https://msdn.microsoft.com/en-us/library/ms684880(v=VS.85).aspx">MSDN</a>
+     */
+    int PROCESS_ALL_ACCESS = WinNT.PROCESS_CREATE_PROCESS
+            | WinNT.PROCESS_CREATE_THREAD
+            | WinNT.PROCESS_DUP_HANDLE
+            | WinNT.PROCESS_QUERY_INFORMATION
+            | WinNT.PROCESS_QUERY_LIMITED_INFORMATION
+            | WinNT.PROCESS_SET_INFORMATION
+            | WinNT.PROCESS_SET_QUOTA
+            | WinNT.PROCESS_SUSPEND_RESUME
+            | WinNT.PROCESS_SYNCHRONIZE
+            | WinNT.PROCESS_TERMINATE
+            | WinNT.PROCESS_VM_OPERATION
+            | WinNT.PROCESS_VM_READ
+            | WinNT.PROCESS_VM_WRITE
+            | WinNT.DELETE
+            | WinNT.READ_CONTROL
+            | WinNT.WRITE_DAC
+            | WinNT.WRITE_OWNER
+            | WinNT.SYNCHRONIZE;
+
+    /**
+     * Required to retrieve certain information about a process, such as its
+     * token, exit code, and priority class (see
+     * {@link Advapi32#OpenProcessToken}).
+     */
+    int PROCESS_QUERY_INFORMATION = 0x0400;
+
+    /**
+     * Required to retrieve certain information about a process (see
+     * {@link Kernel32#GetExitCodeProcess}
+     * , {@code Kernel32#GetPriorityClass}, {@code Kernel32#IsProcessInJob},
+     * {@code Kernel32.QueryFullProcessImageName}). A handle that has the
+     * {@link #PROCESS_QUERY_INFORMATION} access right is automatically granted
+     * {@link #PROCESS_QUERY_LIMITED_INFORMATION}.
+     *
+     * Windows Server 2003 and Windows XP: This access right is not supported.
+     */
+    int PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+
+    /**
+     * Required to set certain information about a process, such as its priority
+     * class (see {@code Kernel32#SetPriorityClass}).
+     */
+    int PROCESS_SET_INFORMATION = 0x0200;
+
+    /**
+     * Required to set memory limits using
+     * {@code Kernel32.SetProcessWorkingSetSize()}.
+     */
+    int PROCESS_SET_QUOTA = 0x0100;
+
+    /** Required to suspend or resume a process. */
+    int PROCESS_SUSPEND_RESUME = 0x0800;
+
+    /**
+     * Required to terminate a process using
+     * {@link Kernel32#TerminateProcess}.
+     */
     int PROCESS_TERMINATE = 0x00000001;
+
+    /**
+     * Required for getting process exe path in native system path format
+     * {@code Kernel32.QueryFullProcessImageName()}.
+     */
+    int PROCESS_NAME_NATIVE = 0x00000001;
+
+    /**
+     * Required to perform an operation on the address space of a process (see
+     * {@code Kernel32.VirtualProtectEx()} and
+     * {@link Kernel32#WriteProcessMemory}
+     * ).
+     */
+    int PROCESS_VM_OPERATION = 0x0008;
+
+    /**
+     * Required to read memory in a process using
+     * {@link Kernel32#ReadProcessMemory}
+     * .
+     */
+    int PROCESS_VM_READ = 0x0010;
+
+    /**
+     * Required to write to memory in a process using
+     * {@link Kernel32#WriteProcessMemory}
+     * .
+     */
+    int PROCESS_VM_WRITE = 0x0020;
+
+    /** Required to wait for the process to terminate using the wait functions. */
     int PROCESS_SYNCHRONIZE = 0x00100000;
 
     /* Security information types */
@@ -1983,12 +2452,34 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
     int UNPROTECTED_DACL_SECURITY_INFORMATION = 0x20000000;
     int UNPROTECTED_SACL_SECURITY_INFORMATION = 0x10000000;
 
+    /* Security control bits */
+    int SE_OWNER_DEFAULTED          = 0x00000001;
+    int SE_GROUP_DEFAULTED          = 0x00000002;
+    int SE_DACL_PRESENT             = 0x00000004;
+    int SE_DACL_DEFAULTED           = 0x00000008;
+    int SE_SACL_PRESENT             = 0x00000010;
+    int SE_SACL_DEFAULTED           = 0x00000020;
+    int SE_DACL_AUTO_INHERIT_REQ    = 0x00000100;
+    int SE_SACL_AUTO_INHERIT_REQ    = 0x00000200;
+    int SE_DACL_AUTO_INHERITED      = 0x00000400;
+    int SE_SACL_AUTO_INHERITED      = 0x00000800;
+    int SE_DACL_PROTECTED           = 0x00001000;
+    int SE_SACL_PROTECTED           = 0x00002000;
+    int SE_RM_CONTROL_VALID         = 0x00004000;
+    int SE_SELF_RELATIVE            = 0x00008000;
+
+    int SECURITY_DESCRIPTOR_REVISION = 0x00000001;
+
+    @FieldOrder({"data"})
     public static class SECURITY_DESCRIPTOR extends Structure {
         public static class ByReference extends SECURITY_DESCRIPTOR implements
                 Structure.ByReference {
         }
 
+        public byte[] data;
+
         public SECURITY_DESCRIPTOR() {
+            super();
         }
 
         public SECURITY_DESCRIPTOR(byte[] data) {
@@ -1997,52 +2488,37 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
             useMemory(new Memory(data.length));
         }
 
+        public SECURITY_DESCRIPTOR(int size) {
+            super();
+            useMemory(new Memory(size));
+            data = new byte[size];
+        }
+
         public SECURITY_DESCRIPTOR(Pointer memory) {
             super(memory);
             read();
         }
-
-        public byte[] data;
-
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "data" });
-        }
     }
 
+    int ACL_REVISION        = 2;
+    int ACL_REVISION_DS     = 4;
+
+    // This is the history of ACL revisions.  Add a new one whenever
+    // ACL_REVISION is updated
+    int ACL_REVISION1       = 1;
+    int ACL_REVISION2       = 2;
+    int ACL_REVISION3       = 3;
+    int ACL_REVISION4       = 4;
+    int MIN_ACL_REVISION    = ACL_REVISION2;
+    int MAX_ACL_REVISION    = ACL_REVISION4;
+
+    @FieldOrder({"AclRevision", "Sbz1", "AclSize", "AceCount", "Sbz2"})
     public static class ACL extends Structure {
-
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "AclRevision", "Sbz1", "AclSize", "AceCount", "Sbz2" });
-        }
-
-        public ACL() {
-        }
-
-        public ACL(Pointer pointer) {
-            super(pointer);
-            read();
-            ACEs = new ACCESS_ACEStructure[AceCount];
-            int offset = size();
-            for (int i = 0; i < AceCount; i++) {
-                Pointer share = pointer.share(offset);
-                // ACE_HEADER.AceType
-                final byte aceType = share.getByte(0);
-                ACCESS_ACEStructure ace = null;
-                switch (aceType) {
-                case ACCESS_ALLOWED_ACE_TYPE:
-                    ace = new ACCESS_ALLOWED_ACE(share);
-                    break;
-                case ACCESS_DENIED_ACE_TYPE:
-                    ace = new ACCESS_DENIED_ACE(share);
-                    break;
-                default:
-                    throw new IllegalArgumentException("Unknwon ACE type "
-                            + aceType);
-                }
-                ACEs[i] = ace;
-                offset += ace.AceSize;
-            }
-        }
+        /*
+         * Maximum size chosen based on technet article:
+         * https://technet.microsoft.com/en-us/library/cc781716.aspx
+         */
+        public static int MAX_ACL_SIZE = 64 * 1024;
 
         public byte AclRevision;
         public byte Sbz1;
@@ -2050,13 +2526,79 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         public short AceCount;
         public short Sbz2;
 
-        private ACCESS_ACEStructure[] ACEs;
+        public ACL() {
+            super();
+        }
 
-        public ACCESS_ACEStructure[] getACEStructures() {
+        public ACL(int size) {
+            super();
+            useMemory(new Memory(size));
+        }
+
+        public ACL(Pointer pointer) {
+            super(pointer);
+            read();
+        }
+
+        /**
+         * Extract the contained ACEs from the ACL.
+         *
+         * <p>ACE types as decoded to their native JNA counterparts. ACE types,
+         * that are currently unsupported by JNA are returned as
+         * {@link WinNT.ACE_HEADER} objects.</p>
+         *
+         * @return array holding the contained ACEs
+         */
+        public ACE_HEADER[] getACEs() {
+            ACE_HEADER[] ACEs = new ACE_HEADER[AceCount];
+            final Pointer pointer = this.getPointer();
+            int offset = size();
+            for (int i = 0; i < AceCount; i++) {
+                final Pointer share = pointer.share(offset);
+                final byte aceType = share.getByte(0); // ACE_HEADER.AceType
+                switch (aceType) {
+                    case ACCESS_ALLOWED_ACE_TYPE:
+                        ACEs[i] = new ACCESS_ALLOWED_ACE(share);
+                        break;
+                    case ACCESS_DENIED_ACE_TYPE:
+                        ACEs[i] = new ACCESS_DENIED_ACE(share);
+                        break;
+                    default:
+                        ACEs[i] = new ACE_HEADER(share);
+                        break;
+                }
+                offset += ACEs[i].AceSize;
+            }
             return ACEs;
         }
     }
 
+    public static class PACLByReference extends ByReference {
+        public PACLByReference() {
+            this(null);
+        }
+
+        public PACLByReference(ACL h) {
+            super(Native.POINTER_SIZE);
+            setValue(h);
+        }
+
+        public void setValue(ACL h) {
+            getPointer().setPointer(0, h != null ? h.getPointer() : null);
+        }
+
+        public ACL getValue() {
+            Pointer p = getPointer().getPointer(0);
+            if (p == null) {
+                return null;
+            }
+            else {
+                return new ACL(p);
+            }
+        }
+    }
+
+    @FieldOrder({"Revision", "Sbz1", "Control", "Owner", "Group", "Sacl", "Dacl"})
     public static class SECURITY_DESCRIPTOR_RELATIVE extends Structure {
         public static class ByReference extends SECURITY_DESCRIPTOR_RELATIVE
                 implements Structure.ByReference {
@@ -2070,52 +2612,121 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         public int Sacl;
         public int Dacl;
 
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "Revision", "Sbz1", "Control", "Owner", "Group", "Sacl", "Dacl" });
-        }
-
+        private PSID OWNER;
+        private PSID GROUP;
+        private ACL SACL;
         private ACL DACL;
 
         public SECURITY_DESCRIPTOR_RELATIVE() {
+            super();
         }
 
         public SECURITY_DESCRIPTOR_RELATIVE(byte[] data) {
             super(new Memory(data.length));
             getPointer().write(0, data, 0, data.length);
-            setDacl();
+            setMembers();
+        }
+
+        public SECURITY_DESCRIPTOR_RELATIVE(int length) {
+            super(new Memory(length));
         }
 
         public SECURITY_DESCRIPTOR_RELATIVE(Pointer p) {
             super(p);
-            setDacl();
+            setMembers();
+        }
+
+        public PSID getOwner() {
+            return OWNER;
+        }
+
+        public PSID getGroup() {
+            return GROUP;
         }
 
         public ACL getDiscretionaryACL() {
             return DACL;
         }
 
-        private final void setDacl() {
+        public ACL getSystemACL() {
+            return SACL;
+        }
+
+        private final void setMembers() {
             read();
             if (Dacl != 0) {
                 DACL = new ACL(getPointer().share(Dacl));
             }
+            if (Sacl != 0) {
+                SACL = new ACL(getPointer().share(Sacl));
+            }
+            if (Group != 0) {
+                GROUP = new PSID(getPointer().share(Group));
+            }
+            if (Owner != 0) {
+                OWNER = new PSID(getPointer().share(Owner));
+            }
         }
     }
 
-    public static abstract class ACEStructure extends Structure {
+    @FieldOrder({"AceType", "AceFlags", "AceSize"})
+    public static class ACE_HEADER extends Structure {
         public byte AceType;
         public byte AceFlags;
         public short AceSize;
 
-        PSID psid;
-
-        public ACEStructure() { }
-        public ACEStructure(Pointer p) {
-            super(p);
+        public ACE_HEADER() {
+            super();
         }
 
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "AceType", "AceFlags", "AceSize" });
+        public ACE_HEADER(Pointer p) {
+            super(p);
+            read();
+        }
+
+        public ACE_HEADER(byte AceType, byte AceFlags, short AceSize) {
+            super();
+            this.AceType = AceType;
+            this.AceFlags = AceFlags;
+            this.AceSize = AceSize;
+            write();
+        }
+    }
+
+    /**
+     * ACCESS_ALLOWED_ACE and ACCESS_DENIED_ACE have the same structure layout
+     */
+    @FieldOrder({"Mask", "SidStart"})
+    public static abstract class ACCESS_ACEStructure extends ACE_HEADER {
+        public int Mask;
+        /**
+         * First 4 bytes of the SID
+         * Only used to have a valid field defined - use sid!
+         */
+        public byte[] SidStart = new byte[4];
+
+        PSID psid;
+
+        public ACCESS_ACEStructure() {
+            super();
+        }
+
+        public ACCESS_ACEStructure(int Mask, byte AceType, byte AceFlags, PSID psid) {
+            super();
+            this.calculateSize(true);
+            this.AceType = AceType;
+            this.AceFlags = AceFlags;
+            this.AceSize = (short) (super.fieldOffset("SidStart") + psid.getBytes().length);
+            this.psid = psid;
+            this.Mask = Mask;
+            this.SidStart = psid.getPointer().getByteArray(0, SidStart.length);
+            this.allocateMemory(AceSize);
+            write();
+        }
+
+        public ACCESS_ACEStructure(Pointer p) {
+            super(p);
+            read();
         }
 
         public String getSidString() {
@@ -2125,60 +2736,67 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         public PSID getSID() {
             return psid;
         }
-    }
-
-    /* ACE header */
-    public static class ACE_HEADER extends ACEStructure {
-        public ACE_HEADER() { }
-        public ACE_HEADER(Pointer p) {
-            super(p);
-            read();
-        }
-    }
-
-    /**
-     * ACCESS_ALLOWED_ACE and ACCESS_DENIED_ACE have the same structure layout
-     */
-    public static abstract class ACCESS_ACEStructure extends ACEStructure {
-        protected List getFieldOrder() {
-            List list = new ArrayList(super.getFieldOrder());
-            list.addAll(Arrays.asList(new String[] { "Mask", "SidStart"}));
-            return list;
-        }
-        public ACCESS_ACEStructure() { }
-        public ACCESS_ACEStructure(Pointer p) {
-            super(p);
-            read();
-            // AceSize - size of public members of the structure + size of DWORD
-            // (SidStart)
-            int sizeOfSID = super.AceSize - size() + 4;
-            // ACE_HEADER + size of int (Mask)
-            int offsetOfSID = 4 + 4;
-            byte[] data = p.getByteArray(offsetOfSID, sizeOfSID);
-            psid = new PSID(data);
-        }
-
-        public int Mask;
 
         /**
-         * first 4 bytes of the SID
+         * Write override due to psid not being a managed field
          */
-        public DWORD SidStart;
+        @Override
+        public void write() {
+            super.write();
+            int offsetOfSID = super.fieldOffset("SidStart");
+            int sizeOfSID = super.AceSize - super.fieldOffset("SidStart");
+            if(psid != null) {
+                // Get bytes from the PSID
+                byte[] psidWrite = psid.getBytes();
+                assert psidWrite.length <= sizeOfSID;
+                // Write those bytes to native memory
+                getPointer().write(offsetOfSID, psidWrite, 0, sizeOfSID);
+            }
+        }
+
+        @Override
+        public void read() {
+            if(SidStart == null) {
+                SidStart = new byte[4];
+            }
+            super.read();
+            int offsetOfSID = super.fieldOffset("SidStart");
+            int sizeOfSID = super.AceSize - super.fieldOffset("SidStart");
+            if(sizeOfSID > 0) {
+                psid = new PSID(getPointer().getByteArray(offsetOfSID, sizeOfSID));
+            } else {
+                psid = new PSID();
+            }
+        }
     }
 
     /* Access allowed ACE */
     public static class ACCESS_ALLOWED_ACE extends ACCESS_ACEStructure {
-        public ACCESS_ALLOWED_ACE() { }
+        public ACCESS_ALLOWED_ACE() {
+            super();
+        }
+
         public ACCESS_ALLOWED_ACE(Pointer p) {
             super(p);
+        }
+
+        public ACCESS_ALLOWED_ACE(int Mask, byte AceFlags, PSID psid) {
+            super(Mask, ACCESS_ALLOWED_ACE_TYPE, AceFlags, psid);
         }
     }
 
     /* Access denied ACE */
     public static class ACCESS_DENIED_ACE extends ACCESS_ACEStructure {
-        public ACCESS_DENIED_ACE() { }
+        public ACCESS_DENIED_ACE() {
+            super();
+        }
+
         public ACCESS_DENIED_ACE(Pointer p) {
             super(p);
+        }
+
+        public ACCESS_DENIED_ACE(int Mask, byte AceFlags, PSID psid) {
+            super(Mask, ACCESS_DENIED_ACE_TYPE, AceFlags, psid);
         }
     }
 
@@ -2220,6 +2838,7 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
     /**
      * Defines the mapping of generic access rights to specific and standard access rights for an object
      */
+    @FieldOrder({"genericRead", "genericWrite", "genericExecute", "genericAll"})
     public static class GENERIC_MAPPING extends Structure {
         public static class ByReference extends GENERIC_MAPPING implements Structure.ByReference {
         }
@@ -2228,17 +2847,13 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         public DWORD genericWrite;
         public DWORD genericExecute;
         public DWORD genericAll;
-
-        @Override
-        protected List getFieldOrder() {
-            return Arrays.asList("genericRead", "genericWrite", "genericExecute", "genericAll");
-        }
     }
 
     /**
      * Describes the relationship between the specified processor set. This structure is used with the
      * {@link Kernel32#GetLogicalProcessorInformation} function.
      */
+    @FieldOrder({"processorMask", "relationship", "payload"})
     public static class SYSTEM_LOGICAL_PROCESSOR_INFORMATION extends Structure {
         /**
          * The processor mask identifying the processors described by this structure. A processor mask is a bit
@@ -2264,16 +2879,12 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
         public AnonymousUnionPayload payload;
 
         public SYSTEM_LOGICAL_PROCESSOR_INFORMATION() {
+            super();
         }
 
         public SYSTEM_LOGICAL_PROCESSOR_INFORMATION(Pointer memory) {
             super(memory);
             read();
-        }
-
-        @Override
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "processorMask", "relationship", "payload" });
         }
 
         public static class AnonymousUnionPayload extends Union {
@@ -2306,6 +2917,7 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
             public ULONGLONG[] reserved = new ULONGLONG[2];
         }
 
+        @FieldOrder({"flags"})
         public static class AnonymousStructProcessorCore extends Structure {
             /**
              * <p>If the value of this mmeber is {@code 1}, the logical processors identified by the value of the
@@ -2316,24 +2928,396 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
              *    package.</p>
              */
             public BYTE flags;
-
-            @Override
-            protected List getFieldOrder() {
-                return Arrays.asList(new String[] { "flags" });
-            }
         }
 
+        @FieldOrder({"nodeNumber"})
         public static class AnonymousStructNumaNode extends Structure {
             /**
              * Identifies the NUMA node. Valid values are {@code 0} to the highest NUMA node number inclusive.
              * A non-NUMA multiprocessor system will report that all processors belong to one NUMA node.
              */
             public DWORD nodeNumber;
+        }
+    }
 
-            @Override
-            protected List getFieldOrder() {
-                return Arrays.asList(new String[] { "nodeNumber" });
+    /**
+     * Contains information about the relationships of logical processors and
+     * related hardware. The {@link Kernel32#GetLogicalProcessorInformationEx}
+     * function uses this structure.
+     * <p>
+     * The native structure contains a union, which is mapped to JNA as
+     * subclasses.
+     */
+    @FieldOrder({ "relationship", "size" })
+    public abstract class SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX extends Structure {
+
+        /**
+         * The type of relationship between the logical processors. This
+         * parameter can be one of the following values:
+         * {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationCache},
+         * {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationGroup},
+         * {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationNumaNode},
+         * {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationProcessorCore}, or
+         * {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationProcessorPackage}.
+         * <p>
+         * This field identifies which subclass will be instantiated by the
+         * {@link #fromPointer(Pointer)} method.
+         */
+        public int /* LOGICAL_PROCESSOR_RELATIONSHIP */ relationship;
+
+        /**
+         * The size of the structure, in bytes.
+         */
+        public int size;
+
+        public SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX() {
+            super();
+        }
+
+        /**
+         * This constructor should only be called by a subclass to ensure memory
+         * is properly allocated to the subclass fields.
+         *
+         * @param memory
+         *            A pointer to the allocated native memory.
+         */
+        protected SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX(Pointer memory) {
+            super(memory);
+        }
+
+        /**
+         * Create a new instance of the appropriate subclass of
+         * {@link SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX} from the provided
+         * {@link Pointer} to native memory. Use this method rather than
+         * {@link #SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX(Pointer)} to properly
+         * cast the Pointer to the appropriate subclass and populate variable
+         * length arrays.
+         *
+         * @param memory
+         *            A pointer to allocated memory to be cast to this class.
+         * @return An instance of the appropriate subclass depending on the
+         *         value of the {@link #relationship} field. If the
+         *         {@link #relationship} member is
+         *         {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationProcessorCore}
+         *         or
+         *         {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationProcessorPackage},
+         *         the return type will be {@link PROCESSOR_RELATIONSHIP}. If
+         *         the {@link #relationship} member is
+         *         {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationNumaNode}, the
+         *         return type will be {@link NUMA_NODE_RELATIONSHIP}. If the
+         *         {@link #relationship} member is
+         *         {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationCache}, the
+         *         return type will be {@link CACHE_RELATIONSHIP}. If the
+         *         {@link #relationship} member is
+         *         {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationGroup}, the
+         *         return type will be {@link GROUP_RELATIONSHIP}.
+         */
+        public static SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX fromPointer(Pointer memory) {
+            int relationship = memory.getInt(0);
+            SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX result;
+            switch (relationship) {
+                case LOGICAL_PROCESSOR_RELATIONSHIP.RelationProcessorCore:
+                case LOGICAL_PROCESSOR_RELATIONSHIP.RelationProcessorPackage:
+                    result = new PROCESSOR_RELATIONSHIP(memory);
+                    break;
+                case LOGICAL_PROCESSOR_RELATIONSHIP.RelationNumaNode:
+                    result = new NUMA_NODE_RELATIONSHIP(memory);
+                    break;
+                case LOGICAL_PROCESSOR_RELATIONSHIP.RelationCache:
+                    result = new CACHE_RELATIONSHIP(memory);
+                    break;
+                case LOGICAL_PROCESSOR_RELATIONSHIP.RelationGroup:
+                    result = new GROUP_RELATIONSHIP(memory);
+                    break;
+                default:
+                    throw new IllegalStateException("Unmapped relationship: " + relationship);
             }
+            result.read();
+            return result;
+        }
+    }
+
+    /**
+     * Describes the logical processors associated with either a processor core
+     * or a processor package.
+     */
+    @FieldOrder({ "flags", "efficiencyClass", "reserved", "groupCount", "groupMask" })
+    public static class PROCESSOR_RELATIONSHIP extends SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX {
+
+        /**
+         * If the {@link #relationship} member of the
+         * {@link SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX} structure is
+         * {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationProcessorCore}, this
+         * member is {@link #LTP_PC_SMT} if the core has more than one logical
+         * processor, or 0 if the core has one logical processor.
+         * <p>
+         * If the {@link #relationship} member of the
+         * {@link SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX} structure is
+         * {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationProcessorPackage}, this
+         * member is always 0.
+         */
+        public byte flags;
+
+        /**
+         * If the {@link #relationship} member of the
+         * {@link SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX} structure is
+         * {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationProcessorCore},
+         * EfficiencyClass specifies the intrinsic tradeoff between performance
+         * and power for the applicable core. A core with a higher value for the
+         * efficiency class has intrinsically greater performance and less
+         * efficiency than a core with a lower value for the efficiency class.
+         * EfficiencyClass is only nonzero on systems with a heterogeneous set
+         * of cores.
+         * <p>
+         * If the {@link #relationship} member of the
+         * {@link SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX} structure is
+         * {@link LOGICAL_PROCESSOR_RELATIONSHIP#RelationProcessorPackage},
+         * EfficiencyClass is always 0.
+         * <p>
+         * The minimum operating system version that supports this member is
+         * Windows 10.
+         */
+        public byte efficiencyClass;
+
+        /**
+         * This member is reserved.
+         */
+        public byte[] reserved = new byte[20];
+
+        /**
+         * This member specifies the number of entries in the GroupMask array.
+         * <p>
+         * If the PROCESSOR_RELATIONSHIP structure represents a processor core,
+         * the GroupCount member is always 1.
+         * <p>
+         * If the {@link PROCESSOR_RELATIONSHIP} structure represents a
+         * processor package, the {@link #groupCount} member is 1 only if all
+         * processors are in the same processor group. If the package contains
+         * more than one NUMA node, the system might assign different NUMA nodes
+         * to different processor groups. In this case, the {@link #groupCount}
+         * member is the number of groups to which NUMA nodes in the package are
+         * assigned.
+         */
+        public short groupCount;
+
+        /**
+         * An array of {@link GROUP_AFFINITY} structures. The
+         * {@link #groupCount} member specifies the number of structures in the
+         * array. Each structure in the array specifies a group number and
+         * processor affinity within the group.
+         */
+        public GROUP_AFFINITY[] groupMask = new GROUP_AFFINITY[1];
+
+        public PROCESSOR_RELATIONSHIP() {
+        }
+
+        public PROCESSOR_RELATIONSHIP(Pointer memory) {
+            super(memory);
+        }
+
+        @Override
+        public void read() {
+            readField("groupCount");
+            groupMask = new GROUP_AFFINITY[groupCount];
+            super.read();
+        }
+    }
+
+    /**
+     * Represents information about a NUMA node in a processor group.
+     */
+    @FieldOrder({ "nodeNumber", "reserved", "groupMask" })
+    public static class NUMA_NODE_RELATIONSHIP extends SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX {
+
+        /**
+         * Identifies the NUMA node. Valid values are {@code 0} to the highest
+         * NUMA node number inclusive. A non-NUMA multiprocessor system will
+         * report that all processors belong to one NUMA node.
+         */
+        public int nodeNumber;
+
+        /**
+         * This member is reserved.
+         */
+        public byte[] reserved = new byte[20];
+
+        /**
+         * A {@link GROUP_AFFINITY} structure that specifies a group number and
+         * processor affinity within the group.
+         */
+        public GROUP_AFFINITY groupMask;
+
+        public NUMA_NODE_RELATIONSHIP() {
+        }
+
+        public NUMA_NODE_RELATIONSHIP(Pointer memory) {
+            super(memory);
+        }
+    }
+
+    /**
+     * Describes cache attributes.
+     */
+    @FieldOrder({ "level", "associativity", "lineSize", "cacheSize", "type", "reserved", "groupMask" })
+    public static class CACHE_RELATIONSHIP extends SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX {
+
+        /**
+         * The cache level. This member can be 1 (L1), 2 (L2), 3 (L3), or 4
+         * (L4).
+         */
+        public byte level;
+
+        /**
+         * The cache associativity. If this member is
+         * {@link #CACHE_FULLY_ASSOCIATIVE}, the cache is fully associative.
+         */
+        public byte associativity;
+
+        /**
+         * The cache line size, in bytes.
+         */
+        public short lineSize;
+
+        /**
+         * The cache size, in bytes.
+         */
+        public int cacheSize;
+
+        /**
+         * The cache type. This member is a {@link PROCESSOR_CACHE_TYPE} value.
+         */
+        public int /* PROCESSOR_CACHE_TYPE */ type;
+
+        /**
+         * This member is reserved.
+         */
+        public byte[] reserved = new byte[20];
+
+        /**
+         * A {@link GROUP_AFFINITY} structure that specifies a group number and
+         * processor affinity within the group.
+         */
+        public GROUP_AFFINITY groupMask;
+
+        public CACHE_RELATIONSHIP() {
+        }
+
+        public CACHE_RELATIONSHIP(Pointer memory) {
+            super(memory);
+        }
+    }
+
+    /**
+     * Represents information about processor groups.
+     */
+    @FieldOrder({ "maximumGroupCount", "activeGroupCount", "reserved", "groupInfo" })
+    public static class GROUP_RELATIONSHIP extends SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX {
+
+        /**
+         * The maximum number of processor groups on the system.
+         */
+        public short maximumGroupCount;
+
+        /**
+         * The number of active groups on the system. This member indicates the
+         * number of {@link PROCESSOR_GROUP_INFO} structures in the GroupInfo
+         * array.
+         */
+        public short activeGroupCount;
+
+        /**
+         * This member is reserved.
+         */
+        public byte[] reserved = new byte[20];
+
+        /**
+         * An array of {@link PROCESSOR_GROUP_INFO} structures. The
+         * {@link #activeGroupCount} member specifies the number of structures
+         * in the array. Each structure in the array specifies the number and
+         * affinity of processors in an active group on the system.
+         */
+        public PROCESSOR_GROUP_INFO[] groupInfo = new PROCESSOR_GROUP_INFO[1];
+
+        public GROUP_RELATIONSHIP() {
+        }
+
+        public GROUP_RELATIONSHIP(Pointer memory) {
+            super(memory);
+        }
+
+        @Override
+        public void read() {
+            readField("activeGroupCount");
+            groupInfo = new PROCESSOR_GROUP_INFO[activeGroupCount];
+            super.read();
+        }
+    }
+
+    /**
+     * Represents a processor group-specific affinity, such as the affinity of a
+     * thread.
+     */
+    @FieldOrder({ "mask", "group", "reserved" })
+    public static class GROUP_AFFINITY extends Structure {
+
+        /**
+         * A bitmap that specifies the affinity for zero or more processors
+         * within the specified group.
+         */
+        public ULONG_PTR /* KAFFINITY */ mask;
+
+        /**
+         * The processor group number.
+         */
+        public short group;
+
+        /**
+         * This member is reserved.
+         */
+        public short[] reserved = new short[3];
+
+        public GROUP_AFFINITY(Pointer memory) {
+            super(memory);
+        }
+
+        public GROUP_AFFINITY() {
+            super();
+        }
+    }
+
+    /**
+     * Represents the number and affinity of processors in a processor group.
+     */
+    @FieldOrder({ "maximumProcessorCount", "activeProcessorCount", "reserved", "activeProcessorMask" })
+    public static class PROCESSOR_GROUP_INFO extends Structure {
+
+        /**
+         * The maximum number of processors in the group.
+         */
+        public byte maximumProcessorCount;
+
+        /**
+         * The number of active processors in the group.
+         */
+        public byte activeProcessorCount;
+
+        /**
+         * This member is reserved.
+         */
+        public byte[] reserved = new byte[38];
+
+        /**
+         * A bitmap that specifies the affinity for zero or more active
+         * processors within the group.
+         */
+        public ULONG_PTR /* KAFFINITY */ activeProcessorMask;
+
+        public PROCESSOR_GROUP_INFO(Pointer memory) {
+            super(memory);
+        }
+
+        public PROCESSOR_GROUP_INFO() {
+            super();
         }
     }
 
@@ -2388,6 +3372,7 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
     /**
      * Describes the cache attributes.
      */
+    @FieldOrder({"level", "associativity", "lineSize", "size", "type"})
     public static class CACHE_DESCRIPTOR extends Structure {
         /**
          * The cache level. This member can be 1, 2 or 3, corresponding to L1, L2 or L3 cache, respectively (other
@@ -2417,11 +3402,6 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
          * @see PROCESSOR_CACHE_TYPE
          */
         public int /* PROCESSOR_CACHE_TYPE */ type;
-
-        @Override
-        protected List getFieldOrder() {
-            return Arrays.asList(new String[] { "level", "associativity", "lineSize", "size", "type" });
-        }
     }
 
     /**
@@ -2448,4 +3428,879 @@ public interface WinNT extends WinError, WinDef, WinBase, BaseTSD {
          */
         public static int CacheTrace = 3;
     }
+
+    /**
+     * Defines values that are used to specify system power action types.
+     */
+    public interface POWER_ACTION {
+        int PowerActionNone = 0;
+        int PowerActionReserved = 1;
+        int PowerActionSleep = 2;
+        int PowerActionHibernate = 3;
+        int PowerActionShutdown = 4;
+        int PowerActionShutdownReset = 5;
+        int PowerActionShutdownOff = 6;
+        int PowerActionWarmEject = 7;
+        int PowerActionDisplayOff = 8;
+    }
+
+    /**
+     * Defines values that are used to specify system power states.
+     */
+    public interface SYSTEM_POWER_STATE {
+        int PowerSystemUnspecified = 0;
+        int PowerSystemWorking = 1;
+        int PowerSystemSleeping1 = 2;
+        int PowerSystemSleeping2 = 3;
+        int PowerSystemSleeping3 = 4;
+        int PowerSystemHibernate = 5; // S4
+        int PowerSystemShutdown = 6; // S5
+        int PowerSystemMaximum = 7;
+    }
+
+    /**
+     * Contains information about the current state of the system battery.
+     */
+    @FieldOrder({ "AcOnLine", "BatteryPresent", "Charging", "Discharging", "Spare1", "Tag", "MaxCapacity",
+            "RemainingCapacity", "Rate", "EstimatedTime", "DefaultAlert1", "DefaultAlert2" })
+    class SYSTEM_BATTERY_STATE extends Structure {
+        public byte AcOnLine;
+        public byte BatteryPresent;
+        public byte Charging;
+        public byte Discharging;
+        public byte[] Spare1 = new byte[3];
+        public byte Tag;
+        public int MaxCapacity;
+        public int RemainingCapacity;
+        public int Rate;
+        public int EstimatedTime;
+        public int DefaultAlert1;
+        public int DefaultAlert2;
+
+        public SYSTEM_BATTERY_STATE(Pointer p) {
+            super(p);
+            read();
+        }
+
+        public SYSTEM_BATTERY_STATE() {
+            super();
+        }
+    }
+
+
+    /**
+     * Contains the granularity of the battery capacity.
+     */
+    @FieldOrder({ "Granularity", "Capacity" })
+    class BATTERY_REPORTING_SCALE extends Structure {
+        public int Granularity;
+        public int Capacity;
+    }
+
+    /**
+     * Contains information about a processor.
+     */
+    @FieldOrder({ "Number", "MaxMhz", "CurrentMhz", "MhzLimit", "MaxIdleState", "CurrentIdleState" })
+    class PROCESSOR_POWER_INFORMATION extends Structure {
+        public int Number;
+        public int MaxMhz;
+        public int CurrentMhz;
+        public int MhzLimit;
+        public int MaxIdleState;
+        public int CurrentIdleState;
+
+        public PROCESSOR_POWER_INFORMATION(Pointer p) {
+            super(p);
+            read();
+        }
+
+        public PROCESSOR_POWER_INFORMATION() {
+            super();
+        }
+    }
+
+    /**
+     * Contains information about the idleness of the system.
+     */
+    @FieldOrder({ "MaxIdlenessAllowed", "Idleness", "TimeRemaining", "CoolingMode" })
+    class SYSTEM_POWER_INFORMATION extends Structure {
+        public int MaxIdlenessAllowed;
+        public int Idleness;
+        public int TimeRemaining;
+        public byte CoolingMode;
+
+        public SYSTEM_POWER_INFORMATION(Pointer p) {
+            super(p);
+            read();
+        }
+
+        public SYSTEM_POWER_INFORMATION() {
+            super();
+        }
+    }
+
+    /**
+     * Contains information used to set the system power state.
+     */
+    @FieldOrder({ "Action", "Flags", "EventCode" })
+    class POWER_ACTION_POLICY extends Structure {
+        public int /* POWER_ACTION */ Action;
+        public int Flags;
+        public int EventCode;
+    }
+
+    /**
+     * Contains information about system battery drain policy settings.
+     */
+    @FieldOrder({ "Enable", "Spare", "BatteryLevel", "PowerPolicy", "MinSystemState" })
+    class SYSTEM_POWER_LEVEL extends Structure {
+        public byte Enable;
+        public byte[] Spare = new byte[3];
+        public int BatteryLevel;
+        public POWER_ACTION_POLICY PowerPolicy;
+        public int /* SYSTEM_POWER_STATE */ MinSystemState;
+    }
+
+    int NUM_DISCHARGE_POLICIES = 4;
+
+    /**
+     * Contains information about the current system power policy.
+     */
+    @FieldOrder({ "Revision", "PowerButton", "SleepButton", "LidClose", "LidOpenWake", "Reserved", "Idle",
+            "IdleTimeout", "IdleSensitivity", "DynamicThrottle", "Spare2", "MinSleep", "MaxSleep",
+            "ReducedLatencySleep", "WinLogonFlags", "Spare3", "DozeS4Timeout", "BroadcastCapacityResolution",
+            "DischargePolicy", "VideoTimeout", "VideoDimDisplay", "VideoReserved", "SpindownTimeout",
+            "OptimizeForPower", "FanThrottleTolerance", "ForcedThrottle", "MinThrottle", "OverThrottled" })
+    class SYSTEM_POWER_POLICY extends Structure {
+        public int Revision;
+        public POWER_ACTION_POLICY PowerButton;
+        public POWER_ACTION_POLICY SleepButton;
+        public POWER_ACTION_POLICY LidClose;
+        public int /* SYSTEM_POWER_STATE */ LidOpenWake;
+        public int Reserved;
+        public POWER_ACTION_POLICY Idle;
+        public int IdleTimeout;
+        public byte IdleSensitivity;
+        public byte DynamicThrottle;
+        public byte[] Spare2 = new byte[2];
+        public int /* SYSTEM_POWER_STATE */ MinSleep;
+        public int /* SYSTEM_POWER_STATE */ MaxSleep;
+        public int /* SYSTEM_POWER_STATE */ ReducedLatencySleep;
+        public int WinLogonFlags;
+        public int Spare3;
+        public int DozeS4Timeout;
+        public int BroadcastCapacityResolution;
+        public SYSTEM_POWER_LEVEL[] DischargePolicy = new SYSTEM_POWER_LEVEL[NUM_DISCHARGE_POLICIES];
+        public int VideoTimeout;
+        public byte VideoDimDisplay;
+        public int[] VideoReserved = new int[3];
+        public int SpindownTimeout;
+        public byte OptimizeForPower;
+        public byte FanThrottleTolerance;
+        public byte ForcedThrottle;
+        public byte MinThrottle;
+        public POWER_ACTION_POLICY OverThrottled;
+
+        public SYSTEM_POWER_POLICY(Pointer p) {
+            super(p);
+            read();
+        }
+
+        public SYSTEM_POWER_POLICY() {
+            super();
+        }
+    }
+
+    /**
+     * Contains information about the power capabilities of the system.
+     */
+    @FieldOrder({ "PowerButtonPresent", "SleepButtonPresent", "LidPresent", "SystemS1", "SystemS2", "SystemS3",
+            "SystemS4", "SystemS5", "HiberFilePresent", "FullWake", "VideoDimPresent", "ApmPresent", "UpsPresent",
+            "ThermalControl", "ProcessorThrottle", "ProcessorMinThrottle", "ProcessorMaxThrottle", "FastSystemS4",
+            "Hiberboot", "WakeAlarmPresent", "AoAc", "DiskSpinDown", "HiberFileType", "AoAcConnectivitySupported",
+            "spare3", "SystemBatteriesPresent", "BatteriesAreShortTerm", "BatteryScale", "AcOnLineWake", "SoftLidWake",
+            "RtcWake", "MinDeviceWakeState", "DefaultLowLatencyWake" })
+    class SYSTEM_POWER_CAPABILITIES extends Structure {
+        // Misc supported system features
+        public byte PowerButtonPresent;
+        public byte SleepButtonPresent;
+        public byte LidPresent;
+        public byte SystemS1;
+        public byte SystemS2;
+        public byte SystemS3;
+        public byte SystemS4; // hibernate
+        public byte SystemS5; // off
+        public byte HiberFilePresent;
+        public byte FullWake;
+        public byte VideoDimPresent;
+        public byte ApmPresent;
+        public byte UpsPresent;
+
+        // Processors
+        public byte ThermalControl;
+        public byte ProcessorThrottle;
+        public byte ProcessorMinThrottle;
+
+        // Prior to WinXP, next 5 bytes are ProcessorThrottleScale
+        // followed by 4 spare bytes
+        public byte ProcessorMaxThrottle;
+        public byte FastSystemS4;
+        public byte Hiberboot;
+        public byte WakeAlarmPresent;
+        public byte AoAc;
+
+        // Disk
+        public byte DiskSpinDown;
+
+        // HiberFile (Pre-Win10 next 2 bytes are spare)
+        public byte HiberFileType;
+        public byte AoAcConnectivitySupported;
+        public byte[] spare3 = new byte[6];
+
+        // System Battery
+        public byte SystemBatteriesPresent;
+        public byte BatteriesAreShortTerm;
+        public BATTERY_REPORTING_SCALE[] BatteryScale = new BATTERY_REPORTING_SCALE[3];
+
+        // Wake
+        public int /* SYSTEM_POWER_STATE */ AcOnLineWake;
+        public int /* SYSTEM_POWER_STATE */ SoftLidWake;
+        public int /* SYSTEM_POWER_STATE */ RtcWake;
+        public int /* SYSTEM_POWER_STATE */ MinDeviceWakeState;
+        public int /* SYSTEM_POWER_STATE */ DefaultLowLatencyWake;
+
+        public SYSTEM_POWER_CAPABILITIES(Pointer p) {
+            super(p);
+            read();
+        }
+
+        public SYSTEM_POWER_CAPABILITIES() {
+            super();
+        }
+    }
+    /**
+     * Indicates committed pages for which physical storage has been allocated,
+     * either in memory or in the paging file on disk.
+     */
+    int MEM_COMMIT = 0x1000;
+
+    /**
+     * Indicates free pages not accessible to the calling process and available to be allocated.
+     * For free pages, the information in the AllocationBase, AllocationProtect, Protect, and Type members is undefined.
+     */
+    int MEM_FREE = 0x10000;
+
+    /**
+     * Indicates reserved pages where a range of the process's virtual address space is reserved without any physical storage being allocated.
+     * For reserved pages, the information in the Protect member is undefined.
+     */
+    int MEM_RESERVE = 0x2000;
+
+    /**
+     * Indicates that the memory pages within the region are mapped into the view of an image section.
+     */
+    int MEM_IMAGE = 0x1000000;
+
+    /**
+     * Indicates that the memory pages within the region are mapped into the view of a section.
+     */
+    int MEM_MAPPED = 0x40000;
+
+    /**
+     * Indicates that the memory pages within the region are private (that is, not shared by other processes).
+     */
+    int MEM_PRIVATE = 0x20000;
+
+    /**
+     * Indicates that data in the memory range specified by lpAddress and dwSize
+     * is no longer of interest. The pages should not be read from or written to
+     * the paging file. However, the memory block will be used again later, so
+     * it should not be decommitted.
+     */
+    int MEM_RESET = 0x00080000;
+
+    /**
+     * MEM_RESET_UNDO should only be called on an address range to which
+     * MEM_RESET was successfully applied earlier. It indicates that the data in
+     * the specified memory range specified by lpAddress and dwSize is of
+     * interest to the caller and attempts to reverse the effects of MEM_RESET.
+     */
+    int MEM_RESET_UNDO = 0x1000000;
+
+    /**
+     * Allocates memory using large page support.
+     * <p>
+     * The size and alignment must be a multiple of the large-page minimum. To
+     * obtain this value, use the GetLargePageMinimum function.
+     * <p>
+     * If you specify this value, you must also specify MEM_RESERVE and
+     * MEM_COMMIT.
+     */
+    int MEM_LARGE_PAGES = 0x20000000;
+
+    /**
+     * Reserves an address range that can be used to map Address Windowing
+     * Extensions (AWE) pages.
+     * <p>
+     * This value must be used with MEM_RESERVE and no other values.
+     */
+    int MEM_PHYSICAL = 0x00400000;
+
+    /**
+     * Allocates memory at the highest possible address. This can be slower than
+     * regular allocations, especially when there are many allocations.
+     */
+    int MEM_TOP_DOWN = 0x00100000;
+
+    /**
+     * To coalesce two adjacent placeholders, specify MEM_RELEASE |
+     * MEM_COALESCE_PLACEHOLDERS. When you coalesce placeholders, lpAddress and
+     * dwSize must exactly match those of the placeholder.
+     */
+    int MEM_COALESCE_PLACEHOLDERS = 0x00000001;
+
+    /**
+     * Frees an allocation back to a placeholder (after you've replaced a
+     * placeholder with a private allocation using VirtualAlloc2 or
+     * Virtual2AllocFromApp).
+     * <p>
+     * To split a placeholder into two placeholders, specify MEM_RELEASE |
+     * MEM_PRESERVE_PLACEHOLDER.</p>
+     */
+    int MEM_PRESERVE_PLACEHOLDER = 0x00000002;
+
+    /**
+     * Decommits the specified region of committed pages. After the operation,
+     * the pages are in the reserved state.
+     * <p>
+     * The function does not fail if you attempt to decommit an uncommitted
+     * page. This means that you can decommit a range of pages without first
+     * determining their current commitment state.
+     * <p>
+     * Do not use this value with MEM_RELEASE.
+     * <p>
+     * The MEM_DECOMMIT value is not supported when the lpAddress parameter
+     * provides the base address for an enclave.
+     */
+    int MEM_DECOMMIT = 0x4000;
+
+    /**
+     * Releases the specified region of pages, or placeholder (for a
+     * placeholder, the address space is released and available for other
+     * allocations). After the operation, the pages are in the free state.
+     * <p>
+     * If you specify this value, dwSize must be 0 (zero), and lpAddress must
+     * point to the base address returned by the VirtualAllocEx function when
+     * the region is reserved. The function fails if either of these conditions
+     * is not met.
+     * <p>
+     * If any pages in the region are committed currently, the function first
+     * decommits, and then releases them.
+     * <p>
+     * The function does not fail if you attempt to release pages that are in
+     * different states, some reserved and some committed. This means that you
+     * can release a range of pages without first determining the current
+     * commitment state.
+     * <p>
+     * Do not use this value with MEM_DECOMMIT.
+     */
+    int MEM_RELEASE = 0x8000;
+
+    @FieldOrder({"baseAddress", "allocationBase", "allocationProtect",
+                "regionSize", "state", "protect", "type"})
+    public static class MEMORY_BASIC_INFORMATION extends Structure {
+        /**
+         * A pointer to the base address of the region of pages.
+         */
+        public Pointer baseAddress;
+
+        /**
+         * A pointer to the base address of a range of pages allocated by the VirtualAlloc function.
+         * The page pointed to by the BaseAddress member is contained within this allocation range.
+         */
+        public Pointer allocationBase;
+
+        /**
+         * The memory protection option when the region was initially allocated.
+         * This member can be one of the memory protection constants or 0 if the caller does not have access.
+         */
+        public DWORD allocationProtect;
+
+        /**
+         * The size of the region beginning at the base address in which all pages have identical attributes, in bytes.
+         */
+        public SIZE_T regionSize;
+
+        /**
+         * The state of the pages in the region.
+         * This member can be one of the following values:
+         *
+         * MEM_COMMIT,
+         * MEM_FREE,
+         * MEM_RESERVE.
+         */
+        public DWORD state;
+
+        /**
+         * The access protection of the pages in the region.
+         * This member is one of the values listed for the AllocationProtect member.
+         */
+        public DWORD protect;
+
+        /**
+         * The type of pages in the region.
+         * The following types are defined:
+         *
+         * MEM_IMAGE
+         * MEM_MAPPED
+         * MEM_PRIVATE
+         */
+        public DWORD type;
+    }
+
+    @FieldOrder({"Length", "ImpersonationLevel", "ContextTrackingMode", "EffectiveOnly"})
+    public class SECURITY_QUALITY_OF_SERVICE extends Structure {
+        /** Specifies the size, in bytes, of this structure.
+         */
+        public int Length;
+        /**
+         * Specifies the information given to the server about the client, and
+         * how the server may represent, or impersonate, the client. Security
+         * impersonation levels govern the degree to which a server process can
+         * act on behalf of a client process. This member is a
+         * {@link WinNT.SECURITY_IMPERSONATION_LEVEL} enumeration type value.
+         */
+        public int ImpersonationLevel;
+        /**
+         * Specifies whether the server is to be given a snapshot of the
+         * client's security context (called static tracking), or is to be
+         * continually updated to track changes to the client's security context
+         * (called dynamic tracking). The {@link WinNT#SECURITY_STATIC_TRACKING}
+         * value specifies static tracking, and the
+         * {@link WinNT#SECURITY_DYNAMIC_TRACKING} value specifies dynamic
+         * tracking. Not all communications mechanisms support dynamic tracking;
+         * those that do not will default to static tracking.
+         */
+        public byte ContextTrackingMode;
+        /**
+         * Specifies whether the server may enable or disable privileges and
+         * groups that the client's security context may include.
+         *
+         * <p>This is a boolean value. See {@link WinNT#BOOLEAN_TRUE} and
+         * {@link WinNT#BOOLEAN_FALSE}.</p>
+         */
+        public byte EffectiveOnly;
+
+        @Override
+        public void write() {
+            this.Length = size();
+            super.write();
+        }
+    }
+
+    byte SECURITY_DYNAMIC_TRACKING = (byte) 1;
+    byte SECURITY_STATIC_TRACKING = (byte) 0;
+    byte BOOLEAN_TRUE = (byte) 1;
+    byte BOOLEAN_FALSE = (byte) 0;
+
+    /*
+     * Primary language IDs.
+     */
+    public static final int LANG_NEUTRAL                    = 0x00;
+    public static final int LANG_INVARIANT                  = 0x7f;
+
+    public static final int LANG_AFRIKAANS                  = 0x36;
+    public static final int LANG_ALBANIAN                   = 0x1c;
+    public static final int LANG_ARABIC                     = 0x01;
+    public static final int LANG_ARMENIAN                   = 0x2b;
+    public static final int LANG_ASSAMESE                   = 0x4d;
+    public static final int LANG_AZERI                      = 0x2c;
+    public static final int LANG_BASQUE                     = 0x2d;
+    public static final int LANG_BELARUSIAN                 = 0x23;
+    public static final int LANG_BENGALI                    = 0x45;
+    public static final int LANG_BULGARIAN                  = 0x02;
+    public static final int LANG_CATALAN                    = 0x03;
+    public static final int LANG_CHINESE                    = 0x04;
+    public static final int LANG_CROATIAN                   = 0x1a;
+    public static final int LANG_CZECH                      = 0x05;
+    public static final int LANG_DANISH                     = 0x06;
+    public static final int LANG_DIVEHI                     = 0x65;
+    public static final int LANG_DUTCH                      = 0x13;
+    public static final int LANG_ENGLISH                    = 0x09;
+    public static final int LANG_ESTONIAN                   = 0x25;
+    public static final int LANG_FAEROESE                   = 0x38;
+    public static final int LANG_FARSI                      = 0x29;
+    public static final int LANG_FINNISH                    = 0x0b;
+    public static final int LANG_FRENCH                     = 0x0c;
+    public static final int LANG_GALICIAN                   = 0x56;
+    public static final int LANG_GEORGIAN                   = 0x37;
+    public static final int LANG_GERMAN                     = 0x07;
+    public static final int LANG_GREEK                      = 0x08;
+    public static final int LANG_GUJARATI                   = 0x47;
+    public static final int LANG_HEBREW                     = 0x0d;
+    public static final int LANG_HINDI                      = 0x39;
+    public static final int LANG_HUNGARIAN                  = 0x0e;
+    public static final int LANG_ICELANDIC                  = 0x0f;
+    public static final int LANG_INDONESIAN                 = 0x21;
+    public static final int LANG_ITALIAN                    = 0x10;
+    public static final int LANG_JAPANESE                   = 0x11;
+    public static final int LANG_KANNADA                    = 0x4b;
+    public static final int LANG_KASHMIRI                   = 0x60;
+    public static final int LANG_KAZAK                      = 0x3f;
+    public static final int LANG_KONKANI                    = 0x57;
+    public static final int LANG_KOREAN                     = 0x12;
+    public static final int LANG_KYRGYZ                     = 0x40;
+    public static final int LANG_LATVIAN                    = 0x26;
+    public static final int LANG_LITHUANIAN                 = 0x27;
+    public static final int LANG_MACEDONIAN                 = 0x2f;   // the Former Yugoslav Republic of Macedonia
+    public static final int LANG_MALAY                      = 0x3e;
+    public static final int LANG_MALAYALAM                  = 0x4c;
+    public static final int LANG_MANIPURI                   = 0x58;
+    public static final int LANG_MARATHI                    = 0x4e;
+    public static final int LANG_MONGOLIAN                  = 0x50;
+    public static final int LANG_NEPALI                     = 0x61;
+    public static final int LANG_NORWEGIAN                  = 0x14;
+    public static final int LANG_ORIYA                      = 0x48;
+    public static final int LANG_POLISH                     = 0x15;
+    public static final int LANG_PORTUGUESE                 = 0x16;
+    public static final int LANG_PUNJABI                    = 0x46;
+    public static final int LANG_ROMANIAN                   = 0x18;
+    public static final int LANG_RUSSIAN                    = 0x19;
+    public static final int LANG_SANSKRIT                   = 0x4f;
+    public static final int LANG_SERBIAN                    = 0x1a;
+    public static final int LANG_SINDHI                     = 0x59;
+    public static final int LANG_SLOVAK                     = 0x1b;
+    public static final int LANG_SLOVENIAN                  = 0x24;
+    public static final int LANG_SPANISH                    = 0x0a;
+    public static final int LANG_SWAHILI                    = 0x41;
+    public static final int LANG_SWEDISH                    = 0x1d;
+    public static final int LANG_SYRIAC                     = 0x5a;
+    public static final int LANG_TAMIL                      = 0x49;
+    public static final int LANG_TATAR                      = 0x44;
+    public static final int LANG_TELUGU                     = 0x4a;
+    public static final int LANG_THAI                       = 0x1e;
+    public static final int LANG_TURKISH                    = 0x1f;
+    public static final int LANG_UKRAINIAN                  = 0x22;
+    public static final int LANG_URDU                       = 0x20;
+    public static final int LANG_UZBEK                      = 0x43;
+    public static final int LANG_VIETNAMESE                 = 0x2a;
+
+    /*
+     * Sublanguage IDs.
+     *
+     * The name immediately following SUBLANG_ dictates which primary
+     * language ID that sublanguage ID can be combined with to form a
+     * valid language ID.
+     */
+    public static final int SUBLANG_NEUTRAL                 = 0x00;    // language neutral
+    public static final int SUBLANG_DEFAULT                 = 0x01;    // user default
+    public static final int SUBLANG_SYS_DEFAULT             = 0x02;    // system default
+
+    public static final int SUBLANG_ARABIC_SAUDI_ARABIA     = 0x01;    // Arabic (Saudi Arabia)
+    public static final int SUBLANG_ARABIC_IRAQ             = 0x02;    // Arabic (Iraq)
+    public static final int SUBLANG_ARABIC_EGYPT            = 0x03;    // Arabic (Egypt)
+    public static final int SUBLANG_ARABIC_LIBYA            = 0x04;    // Arabic (Libya)
+    public static final int SUBLANG_ARABIC_ALGERIA          = 0x05;    // Arabic (Algeria)
+    public static final int SUBLANG_ARABIC_MOROCCO          = 0x06;    // Arabic (Morocco)
+    public static final int SUBLANG_ARABIC_TUNISIA          = 0x07;    // Arabic (Tunisia)
+    public static final int SUBLANG_ARABIC_OMAN             = 0x08;    // Arabic (Oman)
+    public static final int SUBLANG_ARABIC_YEMEN            = 0x09;    // Arabic (Yemen)
+    public static final int SUBLANG_ARABIC_SYRIA            = 0x0a;    // Arabic (Syria)
+    public static final int SUBLANG_ARABIC_JORDAN           = 0x0b;    // Arabic (Jordan)
+    public static final int SUBLANG_ARABIC_LEBANON          = 0x0c;    // Arabic (Lebanon)
+    public static final int SUBLANG_ARABIC_KUWAIT           = 0x0d;    // Arabic (Kuwait)
+    public static final int SUBLANG_ARABIC_UAE              = 0x0e;    // Arabic (U.A.E)
+    public static final int SUBLANG_ARABIC_BAHRAIN          = 0x0f;    // Arabic (Bahrain)
+    public static final int SUBLANG_ARABIC_QATAR            = 0x10;    // Arabic (Qatar)
+    public static final int SUBLANG_AZERI_LATIN             = 0x01;    // Azeri (Latin)
+    public static final int SUBLANG_AZERI_CYRILLIC          = 0x02;    // Azeri (Cyrillic)
+    public static final int SUBLANG_CHINESE_TRADITIONAL     = 0x01;    // Chinese (Taiwan)
+    public static final int SUBLANG_CHINESE_SIMPLIFIED      = 0x02;    // Chinese (PR China)
+    public static final int SUBLANG_CHINESE_HONGKONG        = 0x03;    // Chinese (Hong Kong S.A.R., P.R.C.)
+    public static final int SUBLANG_CHINESE_SINGAPORE       = 0x04;    // Chinese (Singapore)
+    public static final int SUBLANG_CHINESE_MACAU           = 0x05;    // Chinese (Macau S.A.R.)
+    public static final int SUBLANG_DUTCH                   = 0x01;    // Dutch
+    public static final int SUBLANG_DUTCH_BELGIAN           = 0x02;    // Dutch (Belgian)
+    public static final int SUBLANG_ENGLISH_US              = 0x01;    // English (USA)
+    public static final int SUBLANG_ENGLISH_UK              = 0x02;    // English (UK)
+    public static final int SUBLANG_ENGLISH_AUS             = 0x03;    // English (Australian)
+    public static final int SUBLANG_ENGLISH_CAN             = 0x04;    // English (Canadian)
+    public static final int SUBLANG_ENGLISH_NZ              = 0x05;    // English (New Zealand)
+    public static final int SUBLANG_ENGLISH_EIRE            = 0x06;    // English (Irish)
+    public static final int SUBLANG_ENGLISH_SOUTH_AFRICA    = 0x07;    // English (South Africa)
+    public static final int SUBLANG_ENGLISH_JAMAICA         = 0x08;    // English (Jamaica)
+    public static final int SUBLANG_ENGLISH_CARIBBEAN       = 0x09;    // English (Caribbean)
+    public static final int SUBLANG_ENGLISH_BELIZE          = 0x0a;    // English (Belize)
+    public static final int SUBLANG_ENGLISH_TRINIDAD        = 0x0b;    // English (Trinidad)
+    public static final int SUBLANG_ENGLISH_ZIMBABWE        = 0x0c;    // English (Zimbabwe)
+    public static final int SUBLANG_ENGLISH_PHILIPPINES     = 0x0d;    // English (Philippines)
+    public static final int SUBLANG_FRENCH                  = 0x01;    // French
+    public static final int SUBLANG_FRENCH_BELGIAN          = 0x02;    // French (Belgian)
+    public static final int SUBLANG_FRENCH_CANADIAN         = 0x03;    // French (Canadian)
+    public static final int SUBLANG_FRENCH_SWISS            = 0x04;    // French (Swiss)
+    public static final int SUBLANG_FRENCH_LUXEMBOURG       = 0x05;    // French (Luxembourg)
+    public static final int SUBLANG_FRENCH_MONACO           = 0x06;    // French (Monaco)
+    public static final int SUBLANG_GERMAN                  = 0x01;    // German
+    public static final int SUBLANG_GERMAN_SWISS            = 0x02;    // German (Swiss)
+    public static final int SUBLANG_GERMAN_AUSTRIAN         = 0x03;    // German (Austrian)
+    public static final int SUBLANG_GERMAN_LUXEMBOURG       = 0x04;    // German (Luxembourg)
+    public static final int SUBLANG_GERMAN_LIECHTENSTEIN    = 0x05;    // German (Liechtenstein)
+    public static final int SUBLANG_ITALIAN                 = 0x01;    // Italian
+    public static final int SUBLANG_ITALIAN_SWISS           = 0x02;    // Italian (Swiss)
+    public static final int SUBLANG_KASHMIRI_SASIA          = 0x02;    // Kashmiri (South Asia)
+    public static final int SUBLANG_KASHMIRI_INDIA          = 0x02;    // For app compatibility only
+    public static final int SUBLANG_KOREAN                  = 0x01;    // Korean (Extended Wansung)
+    public static final int SUBLANG_LITHUANIAN              = 0x01;    // Lithuanian
+    public static final int SUBLANG_MALAY_MALAYSIA          = 0x01;    // Malay (Malaysia)
+    public static final int SUBLANG_MALAY_BRUNEI_DARUSSALAM = 0x02;    // Malay (Brunei Darussalam)
+    public static final int SUBLANG_NEPALI_INDIA            = 0x02;    // Nepali (India)
+    public static final int SUBLANG_NORWEGIAN_BOKMAL        = 0x01;    // Norwegian (Bokmal)
+    public static final int SUBLANG_NORWEGIAN_NYNORSK       = 0x02;    // Norwegian (Nynorsk)
+    public static final int SUBLANG_PORTUGUESE              = 0x02;    // Portuguese
+    public static final int SUBLANG_PORTUGUESE_BRAZILIAN    = 0x01;    // Portuguese (Brazilian)
+    public static final int SUBLANG_SERBIAN_LATIN           = 0x02;    // Serbian (Latin)
+    public static final int SUBLANG_SERBIAN_CYRILLIC        = 0x03;    // Serbian (Cyrillic)
+    public static final int SUBLANG_SPANISH                 = 0x01;    // Spanish (Castilian)
+    public static final int SUBLANG_SPANISH_MEXICAN         = 0x02;    // Spanish (Mexican)
+    public static final int SUBLANG_SPANISH_MODERN          = 0x03;    // Spanish (Spain)
+    public static final int SUBLANG_SPANISH_GUATEMALA       = 0x04;    // Spanish (Guatemala)
+    public static final int SUBLANG_SPANISH_COSTA_RICA      = 0x05;    // Spanish (Costa Rica)
+    public static final int SUBLANG_SPANISH_PANAMA          = 0x06;    // Spanish (Panama)
+    public static final int SUBLANG_SPANISH_DOMINICAN_REPUBLIC = 0x07; // Spanish (Dominican Republic)
+    public static final int SUBLANG_SPANISH_VENEZUELA       = 0x08;    // Spanish (Venezuela)
+    public static final int SUBLANG_SPANISH_COLOMBIA        = 0x09;    // Spanish (Colombia)
+    public static final int SUBLANG_SPANISH_PERU            = 0x0a;    // Spanish (Peru)
+    public static final int SUBLANG_SPANISH_ARGENTINA       = 0x0b;    // Spanish (Argentina)
+    public static final int SUBLANG_SPANISH_ECUADOR         = 0x0c;    // Spanish (Ecuador)
+    public static final int SUBLANG_SPANISH_CHILE           = 0x0d;    // Spanish (Chile)
+    public static final int SUBLANG_SPANISH_URUGUAY         = 0x0e;    // Spanish (Uruguay)
+    public static final int SUBLANG_SPANISH_PARAGUAY        = 0x0f;    // Spanish (Paraguay)
+    public static final int SUBLANG_SPANISH_BOLIVIA         = 0x10;    // Spanish (Bolivia)
+    public static final int SUBLANG_SPANISH_EL_SALVADOR     = 0x11;    // Spanish (El Salvador)
+    public static final int SUBLANG_SPANISH_HONDURAS        = 0x12;    // Spanish (Honduras)
+    public static final int SUBLANG_SPANISH_NICARAGUA       = 0x13;    // Spanish (Nicaragua)
+    public static final int SUBLANG_SPANISH_PUERTO_RICO     = 0x14;    // Spanish (Puerto Rico)
+    public static final int SUBLANG_SWEDISH                 = 0x01;    // Swedish
+    public static final int SUBLANG_SWEDISH_FINLAND         = 0x02;    // Swedish (Finland)
+    public static final int SUBLANG_URDU_PAKISTAN           = 0x01;    // Urdu (Pakistan)
+    public static final int SUBLANG_URDU_INDIA              = 0x02;    // Urdu (India)
+    public static final int SUBLANG_UZBEK_LATIN             = 0x01;    // Uzbek (Latin)
+    public static final int SUBLANG_UZBEK_CYRILLIC          = 0x02;    // Uzbek (Cyrillic)
+
+    /*
+     * Sorting IDs.
+     */
+    public static final int SORT_DEFAULT                    = 0x0;     // sorting default
+
+    public static final int SORT_JAPANESE_XJIS              = 0x0;     // Japanese XJIS order
+    public static final int SORT_JAPANESE_UNICODE           = 0x1;     // Japanese Unicode order
+
+    public static final int SORT_CHINESE_BIG5               = 0x0;     // Chinese BIG5 order
+    public static final int SORT_CHINESE_PRCP               = 0x0;     // PRC Chinese Phonetic order
+    public static final int SORT_CHINESE_UNICODE            = 0x1;     // Chinese Unicode order
+    public static final int SORT_CHINESE_PRC                = 0x2;     // PRC Chinese Stroke Count order
+    public static final int SORT_CHINESE_BOPOMOFO           = 0x3;     // Traditional Chinese Bopomofo order
+
+    public static final int SORT_KOREAN_KSC                 = 0x0;     // Korean KSC order
+    public static final int SORT_KOREAN_UNICODE             = 0x1;     // Korean Unicode order
+
+    public static final int SORT_GERMAN_PHONE_BOOK          = 0x1;     // German Phone Book order
+
+    public static final int SORT_HUNGARIAN_DEFAULT          = 0x0;     // Hungarian Default order
+    public static final int SORT_HUNGARIAN_TECHNICAL        = 0x1;     // Hungarian Technical order
+
+    public static final int SORT_GEORGIAN_TRADITIONAL       = 0x0;     // Georgian Traditional order
+    public static final int SORT_GEORGIAN_MODERN            = 0x1;     // Georgian Modern order
+
+    public static final int NLS_VALID_LOCALE_MASK = 0x000fffff;
+
+    /**
+     *  <p>A language ID is a 16 bit value which is the combination of a
+     *  primary language ID and a secondary language ID.  The bits are
+     *  allocated as follows:</p>
+     *
+     *  <pre>
+     *       +-----------------------+-------------------------+
+     *       |     Sublanguage ID    |   Primary Language ID   |
+     *       +-----------------------+-------------------------+
+     *        15                   10 9                       0   bit
+     *  </pre>
+     *
+     *  <p>WARNING:  This pattern isn't always follows, Serbina, Bosnian &amp; Croation for example.</p>
+     *
+     *  <p>It is recommended that applications test for locale names or actual LCIDs.</p>
+     *
+     *  <p>Note that the LANG, SUBLANG construction is not always consistent.
+     *  The named locale APIs (eg GetLocaleInfoEx) are recommended.</p>
+     *
+     *  <p>Language IDs do not exist for all locales</p>
+     *
+     *  <p>A locale ID is a 32 bit value which is the combination of a
+     *  language ID, a sort ID, and a reserved area.  The bits are
+     * allocated as follows:</p>
+     *
+     * <pre>
+     *   +-------------+---------+-------------------------+
+     *   |   Reserved  | Sort ID |      Language ID        |
+     *   +-------------+---------+-------------------------+
+     *    31         20 19     16 15                      0   bit
+     * </pre>
+     *
+     * <p>WARNING: This pattern isn't always followed (es-ES_tradnl vs es-ES for example)</p>
+     *
+     * <p>It is recommended that applications test for locale names or actual LCIDs.</p>
+     */
+    public static final class LocaleMacros {
+        private static final int _MAKELCID(int lgid, int srtid) {
+            return (srtid << 16) | lgid;
+        }
+
+        /**
+         * construct the locale id from a language id and a sort id.
+         *
+         * @param lgid language id
+         * @param srtid sort id
+         * @return locale id derived from ldig and srtid
+         */
+        public static final LCID MAKELCID(int lgid, int srtid) {
+            return new LCID(_MAKELCID(lgid, srtid));
+        }
+
+        /**
+         * construct the locale id from a language id, sort id, and sort version.
+         *
+         * @param lgid locale id
+         * @param srtid sort id
+         * @param ver sort version
+         * @return locale id derviced from a language id, sort id, and sort version.
+         */
+        public static final LCID MAKESORTLCID(int lgid, int srtid, int ver) {
+            return new LCID(_MAKELCID(lgid, srtid) | (ver << 20));
+        }
+
+        /**
+         * extract the language id from a locale id.
+         *
+         * @param lcid locale id
+         * @return extracted language id
+         */
+        public static final int LANGIDFROMLCID(LCID lcid) {
+            return lcid.intValue() & 0xFFFF;
+        }
+
+        /**
+         * extract the sort id from a locale id.
+         *
+         * @param lcid locale id
+         * @return extracted sort id
+         */
+        public static final int SORTIDFROMLCID(LCID lcid) {
+            return (lcid.intValue() >>> 16) & 0xf;
+        }
+
+        /**
+         * extract the sort version from a locale id.
+         *
+         * @param lcid locale id
+         * @return extracted sort version
+         */
+        public static final int SORTVERSIONFROMLCID(LCID lcid) {
+            return (lcid.intValue() >>> 20) & 0xf;
+        }
+
+        /**
+         * Construct language id from a primary language id and a sublanguage id.
+         *
+         * @param p primary language ID
+         * @param s sublanguage ID
+         * @return constructed language id
+         */
+        public static final int MAKELANGID(int p, int s) {
+            return (s << 10) | (p & 0xFFFF);
+        }
+
+        /**
+         * Extract primary language id from a language id.
+         *
+         * @param lgid language ID
+         * @return extracted primary language id
+         */
+        public static final int PRIMARYLANGID(int lgid) {
+            return lgid & 0x3ff;
+        }
+
+        /**
+         * Extract sublanguage id from a language id.
+         *
+         * @param lgid language ID
+         * @return extracted sublanguage id
+         */
+        public static final int SUBLANGID(int lgid) {
+            return (lgid  & 0xFFFF) >>> 10;
+        }
+    }
+
+    public static final int  LANG_SYSTEM_DEFAULT   = LocaleMacros.MAKELANGID(LANG_NEUTRAL, SUBLANG_SYS_DEFAULT);
+    public static final int  LANG_USER_DEFAULT     = LocaleMacros.MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
+
+    public static final LCID LOCALE_SYSTEM_DEFAULT = LocaleMacros.MAKELCID(LANG_SYSTEM_DEFAULT, SORT_DEFAULT);
+    public static final LCID LOCALE_USER_DEFAULT   = LocaleMacros.MAKELCID(LANG_USER_DEFAULT, SORT_DEFAULT);
+
+    public static final LCID LOCALE_NEUTRAL        = LocaleMacros.MAKELCID(LocaleMacros.MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), SORT_DEFAULT);
+
+    public static final LCID LOCALE_INVARIANT      = LocaleMacros.MAKELCID(LocaleMacros.MAKELANGID(LANG_INVARIANT, SUBLANG_NEUTRAL), SORT_DEFAULT);
+
+    /**
+     * The IO_COUNTERS structure contains I/O accounting information for a
+     * process or a job object. For a job object, the counters include all
+     * operations performed by all processes that have ever been associated with
+     * the job, in addition to all processes currently associated with the job.
+     */
+    @FieldOrder({"ReadOperationCount", "WriteOperationCount",
+        "OtherOperationCount", "ReadTransferCount", "WriteTransferCount",
+        "OtherTransferCount"})
+    public static class IO_COUNTERS extends Structure {
+        /**
+         * The number of read operations performed.
+         */
+        public long ReadOperationCount;
+
+        /**
+         * The number of write operations performed.
+         */
+        public long WriteOperationCount;
+
+        /**
+         * The number of I/O operations performed, other than read and write
+         * operations.
+         */
+        public long OtherOperationCount;
+
+        /**
+         * The number of bytes read.
+         */
+        public long ReadTransferCount;
+
+        /**
+         * The number of bytes written.
+         */
+        public long WriteTransferCount;
+
+        /**
+         * The number of bytes transferred during operations other than read and
+         * write operations.
+         */
+        public long OtherTransferCount;
+
+        public IO_COUNTERS() {
+            super();
+        }
+
+        public IO_COUNTERS(Pointer memory) {
+            super(memory);
+        }
+    }
+
+    public int EVENT_MODIFY_STATE = 0x0002;
+    public int EVENT_ALL_ACCESS = (STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0x3);
 }
